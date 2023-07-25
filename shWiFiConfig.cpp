@@ -279,7 +279,7 @@ bool shWiFiConfig::startSTA(String ssid, String pass)
   {
     println(F("Connection: ") + WiFi.SSID());
     println(F("IP: ") + WiFi.localIP().toString());
-    println("HostName: " + WiFi.hostname() + "\n");
+    println(F("HostName: ") + WiFi.hostname() + "\n");
 
     badPassword = false;
   }
@@ -392,18 +392,28 @@ void handleReadSetting()
 
 void handleWriteSetting()
 {
-  // bool reboot = ((ap_sta_mode != (http_server->arg("ap_sta") == "on")) ||
-  //                (curMode == WIFI_AP &&
-  //                 (apSsid != http_server->arg("ap_ssid") || apPass != http_server->arg("ap_pass"))) ||
-  //                (staSsid != http_server->arg("ssid") || staPass != http_server->arg("pass")));
+  if (http_server->hasArg("plain") == false)
+  { 
+    http_server->send(200, "text/plain", F("Body not received"));
+    println(F("Failed to save configuration data"));
+    return;
+  }
 
+  String json = http_server->arg("plain");
+
+  http_server->send(200, "text/plain");
+  Serial.println(json);
+
+  bool reboot = ((ap_sta_mode != (http_server->arg("ap_sta") == "on")) ||
+                 (curMode == WIFI_AP &&
+                  (apSsid != http_server->arg("ap_ssid") || apPass != http_server->arg("ap_pass"))) ||
+                 (staSsid != http_server->arg("ssid") || staPass != http_server->arg("pass")));
   // staSsid = http_server->arg("ssid");
   // staPass = http_server->arg("pass");
   // badPassword = false;
   // apSsid = http_server->arg("ap_ssid");
   // apPass = http_server->arg("ap_pass");
   // ap_sta_mode = http_server->arg("ap_sta") == "true";
-  println("saved!!!");
   saveConfig();
   // Если изменили опции, требующие перезагрузки, перезапустить модуль
   // if (reboot)

@@ -90,6 +90,9 @@ static const char config_page[] PROGMEM =
         display: block;
         width: 300px;
       }
+      select {
+        font-style: italic;
+      }
       .save_btn {
         margin: 15px 10px;
         width: 120px;
@@ -104,13 +107,65 @@ static const char config_page[] PROGMEM =
       <div class='tabs'>
         <h3>Настройки WiFi сети</h3>
         <input type='radio' name='tab-btn' id='tab-btn-1' value='' checked />
-        <label for='tab-btn-1'>Режим AP</label>
+        <label for='tab-btn-1'>Режим STA</label>
         <input type='radio' name='tab-btn' id='tab-btn-2' value='' />
-        <label for='tab-btn-2'>Режим STA</label>
+        <label for='tab-btn-2'>Режим AP</label>
         <input type='radio' name='tab-btn' id='tab-btn-3' value='' />
         <label for='tab-btn-3' id='apsta'>AP+STA</label>
 
-        <div id='content-1'>
+         <div id='content-1'>
+          <h4>Режим STA (WiFi-клиент)</h4>
+          <label>Имя сети (SSID)</label><br />
+          <input
+            type='text'
+            name='ssid'
+            id='ssid'
+            title='Введите имя сети или выберите сеть из списка доступных сетей'
+            placeholder='SSID сети'
+          />
+          <label>Пароль</label><br />
+          <input type='text' name='pass' id='pass' placeholder='пароль сети' />
+          <label
+            >Доступные WiFi сети
+            <a href='#' onclick='getApList()'>(обновить)</a></label
+          >
+          <select
+            size='6'
+            onchange="document.getElementById('ssid').value=value"
+            id='ap_list'
+          ></select>
+          <br />
+          <label style='margin-left: 10px'>
+            <input
+              type='checkbox'
+              name='static_ip'
+              id='static_ip'
+              style='margin-left: 0px'
+            />
+            Назначить IP вручную</label
+          ><br />
+          <div id='static_data'>
+            <label>IP-адрес</label><br />
+            <input type='text' minlength='7' maxlength='15' size='15' id='ip' />
+            <label>Шлюз</label><br />
+            <input
+              type='text'
+              minlength='7'
+              maxlength='15'
+              size='15'
+              id='gateway'
+            />
+            <label>Маска сети</label><br />
+            <input
+              type='text'
+              minlength='7'
+              maxlength='15'
+              size='15'
+              id='mask'
+            />
+          </div>
+        </div>
+        <div id='content-2'>
           <h4>Режим AP (точка доступа)</h4>
           <label>Имя точки доступа (SSID)</label><br />
           <input
@@ -143,58 +198,6 @@ static const char config_page[] PROGMEM =
             size='15'
             id='ap_mask'
           />
-        </div>
-        <div id='content-2'>
-          <h4>Режим STA (WiFi-клиент)</h4>
-          <label>Имя сети (SSID)</label><br />
-          <input
-            type='text'
-            name='ssid'
-            id='ssid'
-            title='Введите имя сети или выберите сеть из списка доступных сетей'
-            placeholder='SSID сети'
-          />
-          <label
-            >Доступные WiFi сети
-            <a href='#' onclick='getApList()'>(обновить)</a></label
-          >
-          <select
-            size='6'
-            onchange="document.getElementById('ssid').value=value"
-            id='ap_list'
-          ></select>
-          <label>Пароль</label><br />
-          <input type='text' name='pass' id='pass' placeholder='пароль сети' />
-          <br />
-          <label style='margin-left: 10px'>
-            <input
-              type='checkbox'
-              name='static_ip'
-              id='static_ip'
-              style='margin-left: 0px'
-            />
-            Назначить IP вручную</label
-          ><br />
-          <div id='static_data'>
-            <label>IP-адрес</label><br />
-            <input type='text' minlength='7' maxlength='15' size='15' id='ip' />
-            <label>Шлюз</label><br />
-            <input
-              type='text'
-              minlength='7'
-              maxlength='15'
-              size='15'
-              id='gateway'
-            />
-            <label>Маска сети</label><br />
-            <input
-              type='text'
-              minlength='7'
-              maxlength='15'
-              size='15'
-              id='mask'
-            />
-          </div>
         </div>
         <div id='content-3'>
           <h4>Комбинированный режим (AP+STA)</h4>
