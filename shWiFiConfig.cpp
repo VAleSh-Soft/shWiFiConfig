@@ -1,13 +1,28 @@
 #include "shWiFiConfig.h"
+#include "extras/c_page.h"
 #include <Arduino.h>
 
+#if defined(ARDUINO_ARCH_ESP32)
+static WebServer *http_server = NULL;
+#else
 static ESP8266WebServer *http_server = NULL;
-static FS *file_system = NULL;
+#endif
+
+static FS *file_system;
+
+static void handleGetConfigPage();
+static void handleReadSetting();
+static void handleWriteSetting();
+static void handleReadApList();
+static bool saveConfig();
+static void println(String msg);
+static void print(String msg);
 
 // ==== настройки WiFi ===============================
 static String apSsid = AP_SSID;
 static String apPass = AP_PASS;
 static IPAddress apIP = AP_IP;
+static IPAddress apMask = AP_MASK;
 static String staSsid = STA_SSID;
 static String staPass = STA_PASS;
 static IPAddress staIP = STA_IP;
@@ -17,28 +32,29 @@ static bool staticIP = false;
 static String fileName = "/wifi.json";
 static bool badPassword = false;
 static bool ap_sta_mode = false;
+static bool useComboMode = false;
+static WiFiMode_t curMode = WIFI_OFF;
+static bool logOnState = true;
+
+// ==== Имена JSON-параметров ========================
+static const String ssid_ap_str = "ap_ssid";
+static const String ap_pass_str = "ap_pass";
+static const String ap_ip_str = "ap_ip";
+static const String ap_mask_str = "ap_mask";
+static const String ssid_str = "ssid";
+static const String pass_str = "pass";
+static const String static_ip_str = "static_ip";
+static const String ip_str = "ip";
+static const String gateway_str = "gateway";
+static const String mask_str = "mask";
+static const String use_combo_mode_str = "use_combo";
+static const String ap_sta_mode_str = "ap_sta";
 
 // ==== shWiFiConfig class ===========================
 
 shWiFiConfig::shWiFiConfig()
 {
   WiFi.mode(curMode);
-}
-
-void shWiFiConfig::println(String msg)
-{
-  if (logOnState)
-  {
-    Serial.println(msg);
-  }
-}
-
-void shWiFiConfig::print(String msg)
-{
-  if (logOnState)
-  {
-    Serial.print(msg);
-  }
 }
 
 void shWiFiConfig::setLogOnState(bool log_on) { logOnState = log_on; }
@@ -54,6 +70,8 @@ void shWiFiConfig::setApSsid(String ap_ssid) { apSsid = ap_ssid; }
 void shWiFiConfig::setApPass(String ap_pass) { apPass = ap_pass; }
 
 void shWiFiConfig::setApIP(IPAddress ap_ip) { apIP = ap_ip; }
+
+void shWiFiConfig::setApMask(IPAddress ap_mask) { apMask = ap_mask; }
 
 void shWiFiConfig::setStaSsid(String sta_ssid) { staSsid = sta_ssid; }
 
@@ -71,6 +89,8 @@ void shWiFiConfig::setConfigFileName(String file_name) { fileName = file_name; }
 
 void shWiFiConfig::setApStaMode(bool mode_on) { ap_sta_mode = mode_on; }
 
+void shWiFiConfig::setUseComboMode(bool mode_on) { useComboMode = mode_on; }
+
 bool shWiFiConfig::getLogOnState() { return (logOnState); }
 
 WiFiMode_t shWiFiConfig::getCurMode() { return (curMode); }
@@ -80,6 +100,8 @@ String shWiFiConfig::getApSsid() { return (apSsid); }
 String shWiFiConfig::getApPass() { return (apPass); }
 
 IPAddress shWiFiConfig::getApIP() { return (apIP); }
+
+IPAddress shWiFiConfig::getApMask() { return (apMask); }
 
 String shWiFiConfig::getStaSsid() { return (staSsid); }
 
@@ -96,6 +118,8 @@ bool shWiFiConfig::getStaticIpMode() { return (staticIP); }
 String shWiFiConfig::getConfigFileName() { return (fileName); }
 
 bool shWiFiConfig::getApStaMode() { return (ap_sta_mode); }
+
+bool shWiFiConfig::getUseComboMode() { return (useComboMode); }
 
 void shWiFiConfig::setApConfig()
 {
@@ -121,13 +145,24 @@ void shWiFiConfig::setStaConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
 {
   WiFi.config(ip, gateway, mask);
 }
-void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _config_page)
+
+#if defined(ARDUINO_ARCH_ESP32)
+bool shWiFiConfig::begin(WebServer *_server, FS *_file_system, String _config_page)
+#else
+bool shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _config_page)
+#endif
 {
   http_server = _server;
   file_system = _file_system;
+  _fsOK = file_system->begin();
 
   // вызов страницы настройки WiFi
   http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
+  http_server->on("/getconfig", HTTP_GET, handleReadSetting);
+  http_server->on("/setconfig", HTTP_POST, handleWriteSetting);
+  http_server->on("/getaplist", HTTP_GET, handleReadApList);
+
+  return (_fsOK);
 }
 
 bool shWiFiConfig::loadConfig()
@@ -170,12 +205,13 @@ bool shWiFiConfig::loadConfig()
   // Теперь можно получить значения из doc
   {
     String _str[] = {ssid_ap_str, ap_pass_str, ssid_str, pass_str,
-                     ip_str, gateway_str, mask_str};
+                     ap_ip_str, ap_mask_str, ip_str, gateway_str, mask_str};
     String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass};
 
-    IPAddress *ip_val[] = {&staIP, &staGateway, &staMask};
+    IPAddress *ip_val[] = {&apIP, &apMask, &staIP, &staGateway, &staMask};
 
     staticIP = doc[static_ip_str].as<bool>();
+    ap_sta_mode = doc[ap_sta_mode_str].as<bool>();
 
     for (byte i = 0; i < 4; i++)
     {
@@ -187,7 +223,7 @@ bool shWiFiConfig::loadConfig()
       }
     }
 
-    for (byte i = 4; i < 7; i++)
+    for (byte i = 4; i < 9; i++)
     {
       IPAddress ip;
       // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
@@ -198,48 +234,6 @@ bool shWiFiConfig::loadConfig()
     }
   }
 
-  return (result);
-}
-
-bool shWiFiConfig::saveConfig()
-{
-  bool result = false;
-
-  // удалить существующий файл, иначе конфигурация будет добавлена ​​к файлу
-  file_system->remove(fileName);
-
-  // Открыть файл для записи
-  File file = file_system->open(fileName, "w");
-  if (!file)
-  {
-    println(F("Failed to create WiFi configuration file"));
-    return (result);
-  }
-
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use https://arduinojson.org/assistant to compute the capacity.
-  StaticJsonDocument<1024> doc;
-
-  // задать данные для сохранения
-  doc[ssid_ap_str] = apSsid;
-  doc[ap_pass_str] = apPass;
-  doc[ssid_str] = staSsid;
-  doc[pass_str] = staPass;
-  doc[static_ip_str] = (byte)staticIP;
-  doc[ip_str] = staIP.toString();
-  doc[gateway_str] = staGateway.toString();
-  doc[mask_str] = staMask.toString();
-
-  // сериализовать JSON-файл
-  result = !serializeJson(doc, file);
-
-  if (!result)
-  {
-    println(F("Failed to write WiFi configuration file"));
-  }
-
-  file.close();
   return (result);
 }
 
@@ -291,7 +285,7 @@ bool shWiFiConfig::startSTA(String ssid, String pass)
   }
   else
   {
-    println(F("Failed to connect to  ") + ssid);
+    println(F("Failed to connect to ") + ssid);
     if (wifi_station_get_connect_status() == STATION_WRONG_PASSWORD)
     {
       println(F("Incorrect password!"));
@@ -370,7 +364,139 @@ void shWiFiConfig::checkStaConnection()
 
 void handleGetConfigPage()
 {
-  const String successResponse =
-      F("Save settings...");
-  http_server->send(200, "text/html", successResponse);
+  http_server->send(200, "text/html", FPSTR(config_page));
+}
+
+void handleReadSetting()
+{
+  StaticJsonDocument<1024> doc;
+
+  doc[ssid_ap_str] = apSsid;
+  doc[ap_pass_str] = apPass;
+  doc[ap_ip_str] = apIP.toString();
+  doc[ap_mask_str] = apMask.toString();
+  doc[ssid_str] = staSsid;
+  doc[pass_str] = staPass;
+  doc[static_ip_str] = (byte)staticIP;
+  doc[ip_str] = staIP.toString();
+  doc[gateway_str] = staGateway.toString();
+  doc[mask_str] = staMask.toString();
+  doc[ap_sta_mode_str] = (byte)ap_sta_mode;
+  doc[use_combo_mode_str] = (byte)useComboMode;
+
+  String json = "";
+  serializeJson(doc, json);
+
+  http_server->send(200, "text/json", json);
+}
+
+void handleWriteSetting()
+{
+  // bool reboot = ((ap_sta_mode != (http_server->arg("ap_sta") == "on")) ||
+  //                (curMode == WIFI_AP &&
+  //                 (apSsid != http_server->arg("ap_ssid") || apPass != http_server->arg("ap_pass"))) ||
+  //                (staSsid != http_server->arg("ssid") || staPass != http_server->arg("pass")));
+
+  // staSsid = http_server->arg("ssid");
+  // staPass = http_server->arg("pass");
+  // badPassword = false;
+  // apSsid = http_server->arg("ap_ssid");
+  // apPass = http_server->arg("ap_pass");
+  // ap_sta_mode = http_server->arg("ap_sta") == "true";
+  println("saved!!!");
+  saveConfig();
+  // Если изменили опции, требующие перезагрузки, перезапустить модуль
+  // if (reboot)
+  // {
+  //   // redirectPath(0);
+  //   ESP.restart();
+  // }
+  // else
+  // {
+  //   // redirectPath(1);
+  // }
+}
+
+static void handleReadApList()
+{
+  int n = WiFi.scanNetworks();
+
+  StaticJsonDocument<2048> doc;
+  if (n > 0)
+  {
+    for (byte i = 0; i < n; ++i)
+    {
+      doc["aps"][i] = WiFi.SSID(i);
+    }
+  }
+  else
+    doc["list"] = "empty";
+
+  String json = "";
+  serializeJson(doc, json);
+
+  http_server->send(200, "text/json", json);
+}
+
+bool saveConfig()
+{
+  File configFile;
+
+  bool result = false;
+
+  // удалить существующий файл, иначе конфигурация будет добавлена ​​к файлу
+  file_system->remove(fileName);
+
+  // Открыть файл для записи
+  configFile = file_system->open(fileName, "w");
+  if (!configFile)
+  {
+    println(F("Failed to create WiFi configuration file"));
+    return (result);
+  }
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use https://arduinojson.org/assistant to compute the capacity.
+  StaticJsonDocument<1024> doc;
+
+  // задать данные для сохранения
+  doc[ssid_ap_str] = apSsid;
+  doc[ap_pass_str] = apPass;
+  doc[ap_ip_str] = apIP.toString();
+  doc[ap_mask_str] = apMask.toString();
+  doc[ssid_str] = staSsid;
+  doc[pass_str] = staPass;
+  doc[static_ip_str] = (byte)staticIP;
+  doc[ip_str] = staIP.toString();
+  doc[gateway_str] = staGateway.toString();
+  doc[mask_str] = staMask.toString();
+  doc[ap_sta_mode_str] = (byte)ap_sta_mode;
+
+  // сериализовать JSON-файл
+  result = serializeJson(doc, configFile);
+
+  if (!result)
+  {
+    println(F("Failed to write WiFi configuration file"));
+  }
+
+  configFile.close();
+  return (result);
+}
+
+void println(String msg)
+{
+  if (logOnState)
+  {
+    Serial.println(msg);
+  }
+}
+
+void print(String msg)
+{
+  if (logOnState)
+  {
+    Serial.print(msg);
+  }
 }
