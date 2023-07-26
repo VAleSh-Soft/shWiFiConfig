@@ -10,6 +10,8 @@ static ESP8266WebServer *http_server = NULL;
 
 static FS *file_system;
 
+static const int confSize = 1024;
+
 static void handleGetConfigPage();
 static void handleReadSetting();
 static void handleWriteSetting();
@@ -17,6 +19,8 @@ static void handleReadApList();
 static bool saveConfig();
 static void println(String msg);
 static void print(String msg);
+static bool readSetting(StaticJsonDocument<confSize> &doc);
+static void writeSetting(StaticJsonDocument<confSize> &doc);
 
 // ==== настройки WiFi ===============================
 static String apSsid = AP_SSID;
@@ -175,7 +179,7 @@ bool shWiFiConfig::loadConfig()
   // если файл конфигурации не найден, сохранить настройки по умолчанию
   if (!result)
   {
-    println(F("WiFi config file not found, default settings used."));
+    println(F("WiFi config file not found, default config used."));
     saveConfig();
     return (result);
   }
@@ -192,46 +196,21 @@ bool shWiFiConfig::loadConfig()
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use https://arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<confSize> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, configFile);
   if (error)
   {
+    print("Data serialization error: ");
+    println(error.f_str());
     println(F("Failed to read WiFi config file, default config is used"));
     result = false;
   }
   else
   // Теперь можно получить значения из doc
   {
-    String _str[] = {ssid_ap_str, ap_pass_str, ssid_str, pass_str,
-                     ap_ip_str, ap_mask_str, ip_str, gateway_str, mask_str};
-    String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass};
-
-    IPAddress *ip_val[] = {&apIP, &apMask, &staIP, &staGateway, &staMask};
-
-    staticIP = doc[static_ip_str].as<bool>();
-    ap_sta_mode = doc[ap_sta_mode_str].as<bool>();
-
-    for (byte i = 0; i < 4; i++)
-    {
-      String s = doc[_str[i]].as<String>();
-      // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
-      if (s != "null")
-      {
-        *str_val[i] = s;
-      }
-    }
-
-    for (byte i = 4; i < 9; i++)
-    {
-      IPAddress ip;
-      // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
-      if (ip.fromString(doc[_str[i]].as<String>()))
-      {
-        *ip_val[i - 4] = ip;
-      }
-    }
+    readSetting(doc);
   }
 
   return (result);
@@ -369,19 +348,9 @@ void handleGetConfigPage()
 
 void handleReadSetting()
 {
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<confSize> doc;
 
-  doc[ssid_ap_str] = apSsid;
-  doc[ap_pass_str] = apPass;
-  doc[ap_ip_str] = apIP.toString();
-  doc[ap_mask_str] = apMask.toString();
-  doc[ssid_str] = staSsid;
-  doc[pass_str] = staPass;
-  doc[static_ip_str] = (byte)staticIP;
-  doc[ip_str] = staIP.toString();
-  doc[gateway_str] = staGateway.toString();
-  doc[mask_str] = staMask.toString();
-  doc[ap_sta_mode_str] = (byte)ap_sta_mode;
+  writeSetting(doc);
   doc[use_combo_mode_str] = (byte)useComboMode;
 
   String json = "";
@@ -393,9 +362,9 @@ void handleReadSetting()
 void handleWriteSetting()
 {
   if (http_server->hasArg("plain") == false)
-  { 
+  {
     http_server->send(200, "text/plain", F("Body not received"));
-    println(F("Failed to save configuration data"));
+    println(F("Failed to save configuration data, no data"));
     return;
   }
 
@@ -404,30 +373,45 @@ void handleWriteSetting()
   http_server->send(200, "text/plain");
   Serial.println(json);
 
-  bool reboot = ((ap_sta_mode != (http_server->arg("ap_sta") == "on")) ||
-                 (curMode == WIFI_AP &&
-                  (apSsid != http_server->arg("ap_ssid") || apPass != http_server->arg("ap_pass"))) ||
-                 (staSsid != http_server->arg("ssid") || staPass != http_server->arg("pass")));
-  // staSsid = http_server->arg("ssid");
-  // staPass = http_server->arg("pass");
-  // badPassword = false;
-  // apSsid = http_server->arg("ap_ssid");
-  // apPass = http_server->arg("ap_pass");
-  // ap_sta_mode = http_server->arg("ap_sta") == "true";
-  saveConfig();
-  // Если изменили опции, требующие перезагрузки, перезапустить модуль
-  // if (reboot)
-  // {
-  //   // redirectPath(0);
-  //   ESP.restart();
-  // }
-  // else
-  // {
-  //   // redirectPath(1);
-  // }
+  StaticJsonDocument<confSize> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, json);
+  if (error)
+  {
+    println(F("Failed to save configuration data, invalid json data"));
+    println(error.f_str());
+  }
+  else
+  {
+    badPassword = false;
+
+    readSetting(doc);
+
+    bool reboot = ((ap_sta_mode != (http_server->arg("ap_sta") == "on")) ||
+                   (curMode == WIFI_AP &&
+                    (apSsid != http_server->arg("ap_ssid") || apPass != http_server->arg("ap_pass"))) ||
+                   (staSsid != http_server->arg("ssid") || staPass != http_server->arg("pass")));
+    // staSsid = http_server->arg("ssid");
+    // staPass = http_server->arg("pass");
+    // apSsid = http_server->arg("ap_ssid");
+    // apPass = http_server->arg("ap_pass");
+    // ap_sta_mode = http_server->arg("ap_sta") == "true";
+    saveConfig();
+    // Если изменили опции, требующие перезагрузки, перезапустить модуль
+    // if (reboot)
+    // {
+    //   // redirectPath(0);
+    //   ESP.restart();
+    // }
+    // else
+    // {
+    //   // redirectPath(1);
+    // }}
+  }
 }
 
-static void handleReadApList()
+void handleReadApList()
 {
   int n = WiFi.scanNetworks();
 
@@ -447,6 +431,8 @@ static void handleReadApList()
 
   http_server->send(200, "text/json", json);
 }
+
+// ===================================================
 
 bool saveConfig()
 {
@@ -468,20 +454,10 @@ bool saveConfig()
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use https://arduinojson.org/assistant to compute the capacity.
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<confSize> doc;
 
   // задать данные для сохранения
-  doc[ssid_ap_str] = apSsid;
-  doc[ap_pass_str] = apPass;
-  doc[ap_ip_str] = apIP.toString();
-  doc[ap_mask_str] = apMask.toString();
-  doc[ssid_str] = staSsid;
-  doc[pass_str] = staPass;
-  doc[static_ip_str] = (byte)staticIP;
-  doc[ip_str] = staIP.toString();
-  doc[gateway_str] = staGateway.toString();
-  doc[mask_str] = staMask.toString();
-  doc[ap_sta_mode_str] = (byte)ap_sta_mode;
+  writeSetting(doc);
 
   // сериализовать JSON-файл
   result = serializeJson(doc, configFile);
@@ -493,6 +469,54 @@ bool saveConfig()
 
   configFile.close();
   return (result);
+}
+
+bool readSetting(StaticJsonDocument<confSize> &doc)
+{
+  String _str[] = {ssid_ap_str, ap_pass_str, ssid_str, pass_str,
+                   ap_ip_str, ap_mask_str, ip_str, gateway_str, mask_str};
+  String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass};
+
+  IPAddress *ip_val[] = {&apIP, &apMask, &staIP, &staGateway, &staMask};
+
+  staticIP = doc[static_ip_str].as<bool>();
+  ap_sta_mode = doc[ap_sta_mode_str].as<bool>();
+
+  for (byte i = 0; i < 4; i++)
+  {
+    String s = doc[_str[i]].as<String>();
+    // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
+    if (s != "null")
+    {
+      *str_val[i] = s;
+    }
+  }
+
+  for (byte i = 4; i < 9; i++)
+  {
+    IPAddress ip;
+    // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
+    if (ip.fromString(doc[_str[i]].as<String>()))
+    {
+      *ip_val[i - 4] = ip;
+    }
+  }
+  return true;
+}
+
+void writeSetting(StaticJsonDocument<confSize> &doc)
+{
+  doc[ssid_ap_str] = apSsid;
+  doc[ap_pass_str] = apPass;
+  doc[ap_ip_str] = apIP.toString();
+  doc[ap_mask_str] = apMask.toString();
+  doc[ssid_str] = staSsid;
+  doc[pass_str] = staPass;
+  doc[static_ip_str] = (byte)staticIP;
+  doc[ip_str] = staIP.toString();
+  doc[gateway_str] = staGateway.toString();
+  doc[mask_str] = staMask.toString();
+  doc[ap_sta_mode_str] = (byte)ap_sta_mode;
 }
 
 void println(String msg)

@@ -113,7 +113,7 @@ static const char config_page[] PROGMEM =
         <input type='radio' name='tab-btn' id='tab-btn-3' value='' />
         <label for='tab-btn-3' id='apsta'>AP+STA</label>
 
-         <div id='content-1'>
+        <div id='content-1'>
           <h4>Режим STA (WiFi-клиент)</h4>
           <label>Имя сети (SSID)</label><br />
           <input
@@ -238,6 +238,7 @@ static const char config_page[] PROGMEM =
             'Длина SSID должна быть не менее 8 и не более 32 символов! \n\n Разрешенные символы: 0-9, A-Z, a-z, - , _'
           );
           document.getElementById(input_id).focus();
+          showErrorPage(input_id);
           return false;
         }
         return true;
@@ -248,33 +249,54 @@ static const char config_page[] PROGMEM =
             'Длина пароля должна быть не менее 8 символов! \n\n Не разрешаются символы кириллицы и пробелы'
           );
           document.getElementById(input_id).focus();
+          showErrorPage(input_id);
           return false;
         }
         return true;
       }
       function ipAddressCheck(id) {
-        var regEx = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        if(document.getElementById(id).value.match(regEx))
-          {
-            return true;
-          }
-        else
-          {
-          alert("Please enter a valid ip Address.");
+        var regEx =
+          /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        if (document.getElementById(id).value.match(regEx)) {
+          return true;
+        } else {
+          alert(
+            'Неправильно введен IP адрес!\n\n IP адрес должен иметь вид XXX.XXX.XXX.XXX \n\n где XXX - число в интервале 0..255'
+          );
+          showErrorPage(id);
           return false;
-          }
+        }
       }
       function validate_form() {
-        // проверка данных
         if (
+          checkSsidValue('ssid') == false ||
+          checkPassValue('pass') == false ||
+          (document.getElementById('static_ip').checked &&
+            (ipAddressCheck('ip') == false ||
+              ipAddressCheck('gateway') == false ||
+              ipAddressCheck('mask') == false)) ||
           checkSsidValue('ap_ssid') == false ||
           checkPassValue('ap_pass') == false ||
-          checkSsidValue('ssid') == false ||
-          checkPassValue('pass') == false
+          ipAddressCheck('ap_ip') == false ||
+          ipAddressCheck('ap_mask') == false
         ) {
           return false;
         }
         return true;
+      }
+      function showErrorPage(id) {
+        if (
+          id == 'ssid' ||
+          id == 'pass' ||
+          id == 'ip' ||
+          id == 'gateway' ||
+          id == 'mask'
+        ) {
+          document.getElementById('tab-btn-1').checked = true;
+        } else {
+          document.getElementById('tab-btn-2').checked = true;
+        }
+        document.getElementById(id).focus();
       }
       function enableBtnSave() {
         document.getElementById('btn_save').removeAttribute('disabled');
@@ -288,24 +310,26 @@ static const char config_page[] PROGMEM =
         enableBtnSave();
       }
       function sendData() {
-        document.getElementById('btn_save').disabled = "disabled";
-        let form_data = {
-          ap_ssid: document.getElementById('ap_ssid').value,
-          ap_pass: document.getElementById('ap_pass').value,
-          ap_ip: document.getElementById('ap_ip').value,
-          ap_mask: document.getElementById('ap_mask').value,
-          ssid: document.getElementById('ssid').value,
-          pass: document.getElementById('pass').value,
-          static_ip: document.getElementById('static_ip').checked,
-          ip: document.getElementById('ip').value,
-          gateway: document.getElementById('gateway').value,
-          mask: document.getElementById('mask').value,
-          ap_sta: document.getElementById('combo').checked,
-        };
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '/setconfig', true);
-        xhr.setRequestHeader('Content-Type', 'text/json');
-        xhr.send(JSON.stringify(form_data));
+        document.getElementById('btn_save').disabled = 'disabled';
+        if (validate_form()) {
+          let form_data = {
+            ap_ssid: document.getElementById('ap_ssid').value,
+            ap_pass: document.getElementById('ap_pass').value,
+            ap_ip: document.getElementById('ap_ip').value,
+            ap_mask: document.getElementById('ap_mask').value,
+            ssid: document.getElementById('ssid').value,
+            pass: document.getElementById('pass').value,
+            static_ip: document.getElementById('static_ip').checked,
+            ip: document.getElementById('ip').value,
+            gateway: document.getElementById('gateway').value,
+            mask: document.getElementById('mask').value,
+            ap_sta: document.getElementById('combo').checked,
+          };
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', '/setconfig', true);
+          xhr.setRequestHeader('Content-Type', 'text/json');
+          xhr.send(JSON.stringify(form_data));
+        }
       }
       function getApList() {
         var sel = document.getElementById('ap_list');
@@ -376,16 +400,24 @@ static const char config_page[] PROGMEM =
         request.send();
         getApList();
       }
-
-      document.getElementById('ap_ssid').addEventListener('keyup', function () {
+      function keyUpBySsid() {
         this.value = this.value.replace(/[^a-zA-Z0-9_/-]/g, '');
-      });
-      document.getElementById('ssid').addEventListener('keyup', function () {
-        this.value = this.value.replace(/[^a-zA-Z0-9_/-]/g, '');
-      });
-      document.getElementById('ap_pass').addEventListener('keyup', function () {
+      }
+      function keyUpByPass() {
         this.value = this.value.replace(/[А-Яа-яёЁ/ ]/g, '');
-      });
+      }
+      function keyUpByIP() {
+        this.value = this.value.replace(/[^0-9.]/g, '');
+      }
+      document.getElementById('ap_ssid').addEventListener('keyup', keyUpBySsid);
+      document.getElementById('ssid').addEventListener('keyup', keyUpBySsid);
+      document.getElementById('ap_pass').addEventListener('keyup', keyUpByPass);
+      document.getElementById('pass').addEventListener('keyup', keyUpByPass);
+      document.getElementById('ip').addEventListener('keyup', keyUpByIP);
+      document.getElementById('gateway').addEventListener('keyup', keyUpByIP);
+      document.getElementById('mask').addEventListener('keyup', keyUpByIP);
+      document.getElementById('ap_ip').addEventListener('keyup', keyUpByIP);
+      document.getElementById('ap_mask').addEventListener('keyup', keyUpByIP);
       document
         .getElementById('ap_ssid')
         .addEventListener('input', enableBtnSave);
