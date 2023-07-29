@@ -25,7 +25,7 @@ static const char config_page[] PROGMEM =
       }
       .tabs {
         font-size: 0;
-        max-width: 350px;
+        max-width: 400px;
         margin-left: auto;
         margin-right: auto;
       }
@@ -45,7 +45,8 @@ static const char config_page[] PROGMEM =
       /* отобразить контент, связанный с вабранной радиокнопкой (input type='radio') */
       #tab-btn-1:checked ~ #content-1,
       #tab-btn-2:checked ~ #content-2,
-      #tab-btn-3:checked ~ #content-3 {
+      #tab-btn-3:checked ~ #content-3,
+      #tab-btn-4:checked ~ #content-4 {
         display: block;
       }
       .tabs > label {
@@ -105,13 +106,15 @@ static const char config_page[] PROGMEM =
   <body>
     <form>
       <div class='tabs'>
-        <h3>Настройки WiFi сети</h3>
+        <h3>Настройки WiFi модуля</h3>
         <input type='radio' name='tab-btn' id='tab-btn-1' value='' checked />
         <label for='tab-btn-1'>Режим STA</label>
         <input type='radio' name='tab-btn' id='tab-btn-2' value='' />
         <label for='tab-btn-2'>Режим AP</label>
         <input type='radio' name='tab-btn' id='tab-btn-3' value='' />
         <label for='tab-btn-3' id='apsta'>AP+STA</label>
+        <input type='radio' name='tab-btn' id='tab-btn-4' value='' />
+        <label for='tab-btn-4' id='admin'>Админ</label>
 
         <div id='content-1'>
           <h4>Режим STA (WiFi-клиент)</h4>
@@ -210,6 +213,22 @@ static const char config_page[] PROGMEM =
             />
             Включить комбинированный режим</label
           >
+        </div>
+        <div id='content-4'>
+          <h4>Управление модулем</h4>
+          <label style='margin-left: 10px'>
+            <input
+              type='checkbox'
+              name='combo'
+              id='combo'
+              style='margin-left: 0px'
+            />
+            Доступ к настройкам по паролю</label
+          ><br />
+          <label>Логин</label><br />
+          <input type='text' name='name' id='adm_name' placeholder='логин для входа в настройки' />
+          <label>Пароль</label><br />
+          <input type='text' name='pass' id='adm_pass' placeholder='пароль для входа в настройки' />
         </div>
         <input
           type='button'

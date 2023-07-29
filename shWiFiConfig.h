@@ -19,10 +19,10 @@ static const IPAddress AP_IP(192, 168, 4, 1);
 static const IPAddress AP_MASK(255, 255, 255, 0);
 
 // ===== Настройки внешней WiFi-сети =================
-static const String STA_SSID = "TP-Link_F6D6_";
-static const String STA_PASS = "47439252";
-// static const String STA_SSID = "WIFI_SSID";
-// static const String STA_PASS = "password";
+// static const String STA_SSID = "TP-Link_F6D6_";
+// static const String STA_PASS = "47439252";
+static const String STA_SSID = "WIFI_SSID";
+static const String STA_PASS = "password";
 static const IPAddress STA_IP(192, 168, 0, 50);
 static const IPAddress STA_GATEWAY(192, 168, 0, 1);
 static const IPAddress STA_MASK(255, 255, 255, 0);

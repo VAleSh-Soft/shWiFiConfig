@@ -12,6 +12,10 @@ static FS *file_system;
 
 static const int confSize = 1024;
 
+static const char TEXT_PLAIN[] PROGMEM = "text/plain";
+static const char TEXT_HTML[] PROGMEM = "text/html";
+static const char TEXT_JSON[] PROGMEM = "text/json";
+
 static void handleGetConfigPage();
 static void handleReadSetting();
 static void handleWriteSetting();
@@ -19,8 +23,9 @@ static void handleReadApList();
 static bool saveConfig();
 static void println(String msg);
 static void print(String msg);
-static bool readSetting(StaticJsonDocument<confSize> &doc);
-static void writeSetting(StaticJsonDocument<confSize> &doc);
+static void readJsonSetting(StaticJsonDocument<confSize> &doc);
+static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
+static void redirectPath(byte x);
 
 // ==== настройки WiFi ===============================
 static String apSsid = AP_SSID;
@@ -41,7 +46,7 @@ static WiFiMode_t curMode = WIFI_OFF;
 static bool logOnState = true;
 
 // ==== Имена JSON-параметров ========================
-static const String ssid_ap_str = "ap_ssid";
+static const String ap_ssid_str = "ap_ssid";
 static const String ap_pass_str = "ap_pass";
 static const String ap_ip_str = "ap_ip";
 static const String ap_mask_str = "ap_mask";
@@ -210,7 +215,7 @@ bool shWiFiConfig::loadConfig()
   else
   // Теперь можно получить значения из doc
   {
-    readSetting(doc);
+    readJsonSetting(doc);
   }
 
   return (result);
@@ -343,35 +348,34 @@ void shWiFiConfig::checkStaConnection()
 
 void handleGetConfigPage()
 {
-  http_server->send(200, "text/html", FPSTR(config_page));
+  http_server->send(200, FPSTR(TEXT_HTML), FPSTR(config_page));
 }
 
 void handleReadSetting()
 {
   StaticJsonDocument<confSize> doc;
 
-  writeSetting(doc);
+  writeSettingInJson(doc);
   doc[use_combo_mode_str] = (byte)useComboMode;
 
   String json = "";
   serializeJson(doc, json);
 
-  http_server->send(200, "text/json", json);
+  http_server->send(200, FPSTR(TEXT_JSON), json);
 }
 
 void handleWriteSetting()
 {
   if (http_server->hasArg("plain") == false)
   {
-    http_server->send(200, "text/plain", F("Body not received"));
+    http_server->send(200, FPSTR(TEXT_PLAIN), F("Body not received"));
     println(F("Failed to save configuration data, no data"));
     return;
   }
 
   String json = http_server->arg("plain");
 
-  http_server->send(200, "text/plain");
-  Serial.println(json);
+  http_server->send(200, FPSTR(TEXT_PLAIN), "");
 
   StaticJsonDocument<confSize> doc;
 
@@ -386,28 +390,58 @@ void handleWriteSetting()
   {
     badPassword = false;
 
-    readSetting(doc);
+    // определить необходимость перезагрузки модуля
+    bool reboot = false;
 
-    bool reboot = ((ap_sta_mode != (http_server->arg("ap_sta") == "on")) ||
-                   (curMode == WIFI_AP &&
-                    (apSsid != http_server->arg("ap_ssid") || apPass != http_server->arg("ap_pass"))) ||
-                   (staSsid != http_server->arg("ssid") || staPass != http_server->arg("pass")));
-    // staSsid = http_server->arg("ssid");
-    // staPass = http_server->arg("pass");
-    // apSsid = http_server->arg("ap_ssid");
-    // apPass = http_server->arg("ap_pass");
-    // ap_sta_mode = http_server->arg("ap_sta") == "true";
+    if (curMode == WIFI_STA || curMode == WIFI_AP_STA)
+    {
+      reboot = (staSsid != doc[ssid_str].as<String>()) ||
+               (staPass != doc[pass_str].as<String>());
+      if (!reboot)
+      {
+        reboot = staticIP != (bool)doc[static_ip_str].as<byte>();
+        if (!reboot && staticIP)
+        {
+          IPAddress ip;
+          reboot = (ip.fromString(doc[ip_str].as<String>()) &&
+                    ((uint32_t)ip != (uint32_t)staIP)) ||
+                   (ip.fromString(doc[gateway_str].as<String>()) &&
+                    ((uint32_t)ip != (uint32_t)staGateway)) ||
+                   (ip.fromString(doc[mask_str].as<String>()) &&
+                    ((uint32_t)ip != (uint32_t)staMask));
+        }
+      }
+    }
+    if (!reboot && (curMode == WIFI_AP || curMode == WIFI_AP_STA))
+    {
+      reboot = (apSsid != doc[ap_ssid_str].as<String>()) ||
+               (apPass != doc[ap_pass_str].as<String>());
+      if (!reboot)
+      {
+        IPAddress ip;
+        reboot = (ip.fromString(doc[ap_ip_str].as<String>()) &&
+                  ((uint32_t)ip != (uint32_t)apIP)) ||
+                 (ip.fromString(doc[ap_mask_str].as<String>()) &&
+                  ((uint32_t)ip != (uint32_t)apMask));
+      }
+    }
+    if (!reboot)
+    {
+      reboot=ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
+    }
+   
+    readJsonSetting(doc);
     saveConfig();
     // Если изменили опции, требующие перезагрузки, перезапустить модуль
-    // if (reboot)
-    // {
-    //   // redirectPath(0);
-    //   ESP.restart();
-    // }
-    // else
-    // {
-    //   // redirectPath(1);
-    // }}
+    if (reboot)
+    {
+      redirectPath(0);
+      ESP.restart();
+    }
+    else
+    {
+      redirectPath(1);
+    }
   }
 }
 
@@ -429,7 +463,7 @@ void handleReadApList()
   String json = "";
   serializeJson(doc, json);
 
-  http_server->send(200, "text/json", json);
+  http_server->send(200, FPSTR(TEXT_JSON), json);
 }
 
 // ===================================================
@@ -457,7 +491,7 @@ bool saveConfig()
   StaticJsonDocument<confSize> doc;
 
   // задать данные для сохранения
-  writeSetting(doc);
+  writeSettingInJson(doc);
 
   // сериализовать JSON-файл
   result = serializeJson(doc, configFile);
@@ -471,9 +505,9 @@ bool saveConfig()
   return (result);
 }
 
-bool readSetting(StaticJsonDocument<confSize> &doc)
+void readJsonSetting(StaticJsonDocument<confSize> &doc)
 {
-  String _str[] = {ssid_ap_str, ap_pass_str, ssid_str, pass_str,
+  String _str[] = {ap_ssid_str, ap_pass_str, ssid_str, pass_str,
                    ap_ip_str, ap_mask_str, ip_str, gateway_str, mask_str};
   String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass};
 
@@ -501,12 +535,11 @@ bool readSetting(StaticJsonDocument<confSize> &doc)
       *ip_val[i - 4] = ip;
     }
   }
-  return true;
 }
 
-void writeSetting(StaticJsonDocument<confSize> &doc)
+void writeSettingInJson(StaticJsonDocument<confSize> &doc)
 {
-  doc[ssid_ap_str] = apSsid;
+  doc[ap_ssid_str] = apSsid;
   doc[ap_pass_str] = apPass;
   doc[ap_ip_str] = apIP.toString();
   doc[ap_mask_str] = apMask.toString();
@@ -533,4 +566,24 @@ void print(String msg)
   {
     Serial.print(msg);
   }
+}
+
+void redirectPath(byte x)
+{
+  const String successResponse0 =
+      F("Module is reboot, wait... <label id='_x'>15</label><script>function _counter(){var x = Number(document.getElementById('_x').innerText) - 1;if (x >= 0) document.getElementById('_x').innerText = x;else window.open('/', '_self', false);}setInterval(_counter, 1000);</script>");
+  const String successResponse1 =
+      F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
+  http_server->client().setNoDelay(true);
+  switch (x)
+  {
+  case 1:
+    http_server->send(200, FPSTR(TEXT_HTML), successResponse1);
+    break;
+  default:
+    http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
+    break;
+  }
+  delay(100);
+  http_server->client().stop();
 }
