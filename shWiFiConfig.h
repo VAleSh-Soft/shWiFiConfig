@@ -12,24 +12,7 @@
 #include <FS.h>
 #include <ArduinoJson.h>
 
-// ==== Настройки точки доступа ======================
-static const String AP_SSID = "WIFI_AP_";
-static const String AP_PASS = "12345678";
-static const IPAddress AP_IP(192, 168, 4, 1);
-static const IPAddress AP_GATEWAY(192, 168, 4, 1);
-static const IPAddress AP_MASK(255, 255, 255, 0);
-
-// ===== Настройки внешней WiFi-сети =================
-// static const String STA_SSID = "TP-Link_F6D6_";
-// static const String STA_PASS = "47439252";
-static const String STA_SSID = "WIFI_SSID";
-static const String STA_PASS = "password";
-static const IPAddress STA_IP(192, 168, 0, 50);
-static const IPAddress STA_GATEWAY(192, 168, 0, 1);
-static const IPAddress STA_MASK(255, 255, 255, 0);
-
 // ===================================================
-
 class shWiFiConfig
 {
 private:
@@ -37,6 +20,7 @@ private:
 
 public:
   shWiFiConfig();
+  shWiFiConfig(String adm_name, String adm_pass);
 
   void setLogOnState(bool log_on);
   void setCurMode(WiFiMode _mode);
@@ -54,6 +38,9 @@ public:
   void setConfigFileName(String file_name);
   void setApStaMode(bool mode_on);
   void setUseComboMode(bool mode_on);
+  void setUseAdminPass(bool pass_on);
+  
+  void setAdminNameEndPass(String a_name, String a_pass);
 
   bool getLogOnState();
   WiFiMode_t getCurMode();
@@ -71,6 +58,10 @@ public:
   String getConfigFileName();
   bool getApStaMode();
   bool getUseComboMode();
+  bool getUseAdminPass();
+  String getAdminPass();
+  String getAdminName();
+
   bool fsOK() { return (_fsOK); }
 
   void setApConfig();

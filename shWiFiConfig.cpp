@@ -29,19 +29,24 @@ static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
 static void redirectPath(byte x);
 
 // ==== настройки WiFi ===============================
-static String apSsid = AP_SSID;
-static String apPass = AP_PASS;
-static IPAddress apIP = AP_IP;
-static IPAddress apGateway = AP_GATEWAY;
-static IPAddress apMask = AP_MASK;
-static String staSsid = STA_SSID;
-static String staPass = STA_PASS;
+
+// ==== AP ======================================
+static String apSsid = "WIFI_AP_";
+static String apPass = "12345678";
+static IPAddress apIP(192, 168, 4, 1);
+static IPAddress apGateway(192, 168, 4, 1);
+static IPAddress apMask(255, 255, 255, 0);
+// ==== STA =====================================
+static String staSsid = "";
+static String staPass = "";
 static bool staticIP = false;
-static IPAddress staIP = STA_IP;
-static IPAddress staGateway = STA_GATEWAY;
-static IPAddress staMask = STA_MASK;
+static IPAddress staIP(192, 168, 0, 50);
+static IPAddress staGateway(192, 168, 0, 1);
+static IPAddress staMask(255, 255, 255, 0);
+// ==== AP + STA ================================
 static bool ap_sta_mode = false;
 static bool useComboMode = false;
+// ==== Other ===================================
 static bool useAdmPass = false;
 static String admName = "";
 static String admPass = "";
@@ -76,6 +81,12 @@ shWiFiConfig::shWiFiConfig()
   WiFi.mode(curMode);
 }
 
+shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
+{
+  WiFi.mode(curMode);
+  setAdminNameEndPass(adm_name, adm_pass);
+}
+
 void shWiFiConfig::setLogOnState(bool log_on) { logOnState = log_on; }
 
 void shWiFiConfig::setCurMode(WiFiMode _mode)
@@ -90,7 +101,7 @@ void shWiFiConfig::setApPass(String ap_pass) { apPass = ap_pass; }
 
 void shWiFiConfig::setApIP(IPAddress ap_ip) { apIP = ap_ip; }
 
-void setApGateway(IPAddress ap_gateway) { apGateway = ap_gateway; };
+void shWiFiConfig::setApGateway(IPAddress ap_gateway) { apGateway = ap_gateway; };
 
 void shWiFiConfig::setApMask(IPAddress ap_mask) { apMask = ap_mask; }
 
@@ -112,6 +123,18 @@ void shWiFiConfig::setApStaMode(bool mode_on) { ap_sta_mode = mode_on; }
 
 void shWiFiConfig::setUseComboMode(bool mode_on) { useComboMode = mode_on; }
 
+void shWiFiConfig::setUseAdminPass(bool pass_on) { useAdmPass = pass_on; }
+
+void shWiFiConfig::setAdminNameEndPass(String a_name, String a_pass)
+{
+  if (a_name != emptyString && a_pass != emptyString)
+  {
+    useAdmPass = true;
+    admName = a_name;
+    admPass = a_pass;
+  }
+}
+
 bool shWiFiConfig::getLogOnState() { return (logOnState); }
 
 WiFiMode_t shWiFiConfig::getCurMode() { return (curMode); }
@@ -122,7 +145,7 @@ String shWiFiConfig::getApPass() { return (apPass); }
 
 IPAddress shWiFiConfig::getApIP() { return (apIP); }
 
-IPAddress getApGateway() { return (apGateway); };
+IPAddress shWiFiConfig::getApGateway() { return (apGateway); };
 
 IPAddress shWiFiConfig::getApMask() { return (apMask); }
 
@@ -143,6 +166,12 @@ String shWiFiConfig::getConfigFileName() { return (fileName); }
 bool shWiFiConfig::getApStaMode() { return (ap_sta_mode); }
 
 bool shWiFiConfig::getUseComboMode() { return (useComboMode); }
+
+bool shWiFiConfig::getUseAdminPass() { return (useAdmPass); }
+
+String shWiFiConfig::getAdminPass() { return (admPass); }
+
+String shWiFiConfig::getAdminName() { return (admName); }
 
 void shWiFiConfig::setApConfig()
 {
@@ -362,6 +391,13 @@ void shWiFiConfig::checkStaConnection()
 
 void handleGetConfigPage()
 {
+  if (useAdmPass &&
+      admName != emptyString &&
+      admPass != emptyString &&
+      !http_server->authenticate(admName.c_str(), admPass.c_str()))
+  {
+    return http_server->requestAuthentication();
+  }
   http_server->send(200, FPSTR(TEXT_HTML), FPSTR(config_page));
 }
 

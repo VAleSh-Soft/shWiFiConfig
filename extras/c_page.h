@@ -114,7 +114,7 @@ static const char config_page[] PROGMEM =
         <input type='radio' name='tab-btn' id='tab-btn-3' value='' />
         <label for='tab-btn-3' id='apsta'>AP+STA</label>
         <input type='radio' name='tab-btn' id='tab-btn-4' value='' />
-        <label for='tab-btn-4' id='admin'>Админ</label>
+        <label for='tab-btn-4' id='admin'>Разное</label>
 
         <div id='content-1'>
           <h4>Режим STA (WiFi-клиент)</h4>
