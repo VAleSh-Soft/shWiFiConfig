@@ -16,6 +16,7 @@
 static const String AP_SSID = "WIFI_AP_";
 static const String AP_PASS = "12345678";
 static const IPAddress AP_IP(192, 168, 4, 1);
+static const IPAddress AP_GATEWAY(192, 168, 4, 1);
 static const IPAddress AP_MASK(255, 255, 255, 0);
 
 // ===== Настройки внешней WiFi-сети =================
@@ -42,6 +43,7 @@ public:
   void setApSsid(String ap_ssid);
   void setApPass(String ap_pass);
   void setApIP(IPAddress ap_ip);
+  void setApGateway(IPAddress ap_gateway);
   void setApMask(IPAddress ap_mask);
   void setStaSsid(String sta_ssid);
   void setStaPass(String sta_pass);
@@ -58,6 +60,7 @@ public:
   String getApSsid();
   String getApPass();
   IPAddress getApIP();
+  IPAddress getApGateway();
   IPAddress getApMask();
   String getStaSsid();
   String getStaPass();

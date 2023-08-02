@@ -20,6 +20,7 @@ static void handleGetConfigPage();
 static void handleReadSetting();
 static void handleWriteSetting();
 static void handleReadApList();
+
 static bool saveConfig();
 static void println(String msg);
 static void print(String msg);
@@ -31,24 +32,30 @@ static void redirectPath(byte x);
 static String apSsid = AP_SSID;
 static String apPass = AP_PASS;
 static IPAddress apIP = AP_IP;
+static IPAddress apGateway = AP_GATEWAY;
 static IPAddress apMask = AP_MASK;
 static String staSsid = STA_SSID;
 static String staPass = STA_PASS;
+static bool staticIP = false;
 static IPAddress staIP = STA_IP;
 static IPAddress staGateway = STA_GATEWAY;
 static IPAddress staMask = STA_MASK;
-static bool staticIP = false;
-static String fileName = "/wifi.json";
-static bool badPassword = false;
 static bool ap_sta_mode = false;
 static bool useComboMode = false;
+static bool useAdmPass = false;
+static String admName = "";
+static String admPass = "";
+
+static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
 static bool logOnState = true;
+static String fileName = "/wifi.json";
 
 // ==== Имена JSON-параметров ========================
 static const String ap_ssid_str = "ap_ssid";
 static const String ap_pass_str = "ap_pass";
 static const String ap_ip_str = "ap_ip";
+static const String ap_gateway_str = "ap_gateway";
 static const String ap_mask_str = "ap_mask";
 static const String ssid_str = "ssid";
 static const String pass_str = "pass";
@@ -58,6 +65,9 @@ static const String gateway_str = "gateway";
 static const String mask_str = "mask";
 static const String use_combo_mode_str = "use_combo";
 static const String ap_sta_mode_str = "ap_sta";
+static const String use_adm_pass_str = "use_adm_pass";
+static const String a_name_str = "a_name";
+static const String a_pass_str = "a_pass";
 
 // ==== shWiFiConfig class ===========================
 
@@ -79,6 +89,8 @@ void shWiFiConfig::setApSsid(String ap_ssid) { apSsid = ap_ssid; }
 void shWiFiConfig::setApPass(String ap_pass) { apPass = ap_pass; }
 
 void shWiFiConfig::setApIP(IPAddress ap_ip) { apIP = ap_ip; }
+
+void setApGateway(IPAddress ap_gateway) { apGateway = ap_gateway; };
 
 void shWiFiConfig::setApMask(IPAddress ap_mask) { apMask = ap_mask; }
 
@@ -110,6 +122,8 @@ String shWiFiConfig::getApPass() { return (apPass); }
 
 IPAddress shWiFiConfig::getApIP() { return (apIP); }
 
+IPAddress getApGateway() { return (apGateway); };
+
 IPAddress shWiFiConfig::getApMask() { return (apMask); }
 
 String shWiFiConfig::getStaSsid() { return (staSsid); }
@@ -132,7 +146,7 @@ bool shWiFiConfig::getUseComboMode() { return (useComboMode); }
 
 void shWiFiConfig::setApConfig()
 {
-  setApConfig(apIP, apIP, (IPAddress(255, 255, 255, 0)));
+  setApConfig(apIP, apGateway, (IPAddress(255, 255, 255, 0)));
 }
 
 void shWiFiConfig::setApConfig(IPAddress ip)
@@ -375,8 +389,6 @@ void handleWriteSetting()
 
   String json = http_server->arg("plain");
 
-  http_server->send(200, FPSTR(TEXT_PLAIN), "");
-
   StaticJsonDocument<confSize> doc;
 
   // Deserialize the JSON document
@@ -427,20 +439,26 @@ void handleWriteSetting()
     }
     if (!reboot)
     {
-      reboot=ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
+      reboot = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
     }
-   
+
     readJsonSetting(doc);
     saveConfig();
+    const String successResponse0 =
+        F("<META http-equiv=\"refresh\" content=\"5;URL=/\">Module is reboot, wait...");
+    const String successResponse1 =
+        F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
+    http_server->client().setNoDelay(true);
     // Если изменили опции, требующие перезагрузки, перезапустить модуль
     if (reboot)
     {
-      redirectPath(0);
+      http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
+      delay(100);
       ESP.restart();
     }
     else
     {
-      redirectPath(1);
+      http_server->send(200, FPSTR(TEXT_HTML), successResponse1);
     }
   }
 }
@@ -464,6 +482,21 @@ void handleReadApList()
   serializeJson(doc, json);
 
   http_server->send(200, FPSTR(TEXT_JSON), json);
+}
+
+static void handleShowSavePage()
+{
+  const String successResponse =
+      F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
+  http_server->client().setNoDelay(true);
+  http_server->send(200, FPSTR(TEXT_HTML), successResponse);
+}
+
+static void handleShowRebootPage()
+{
+  const String successResponse =
+      F("Module is reboot, wait... <label id='_x'>15</label><script>function _counter(){var x = Number(document.getElementById('_x').innerText) - 1;if (x >= 0) document.getElementById('_x').innerText = x;else window.open('/', '_self', false);}setInterval(_counter, 1000);</script>");
+  http_server->send(200, FPSTR(TEXT_HTML), successResponse);
 }
 
 // ===================================================
@@ -507,16 +540,17 @@ bool saveConfig()
 
 void readJsonSetting(StaticJsonDocument<confSize> &doc)
 {
-  String _str[] = {ap_ssid_str, ap_pass_str, ssid_str, pass_str,
-                   ap_ip_str, ap_mask_str, ip_str, gateway_str, mask_str};
-  String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass};
+  String _str[] = {ap_ssid_str, ap_pass_str, ssid_str, pass_str, a_name_str, a_pass_str,
+                   ap_ip_str, ap_gateway_str, ap_mask_str, ip_str, gateway_str, mask_str};
+  String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass, &admName, &admPass};
 
-  IPAddress *ip_val[] = {&apIP, &apMask, &staIP, &staGateway, &staMask};
+  IPAddress *ip_val[] = {&apIP, &apGateway, &apMask, &staIP, &staGateway, &staMask};
 
   staticIP = doc[static_ip_str].as<bool>();
   ap_sta_mode = doc[ap_sta_mode_str].as<bool>();
+  useAdmPass = doc[use_adm_pass_str].as<bool>();
 
-  for (byte i = 0; i < 4; i++)
+  for (byte i = 0; i < 6; i++)
   {
     String s = doc[_str[i]].as<String>();
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
@@ -526,13 +560,13 @@ void readJsonSetting(StaticJsonDocument<confSize> &doc)
     }
   }
 
-  for (byte i = 4; i < 9; i++)
+  for (byte i = 6; i < 12; i++)
   {
     IPAddress ip;
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
     if (ip.fromString(doc[_str[i]].as<String>()))
     {
-      *ip_val[i - 4] = ip;
+      *ip_val[i - 6] = ip;
     }
   }
 }
@@ -542,6 +576,7 @@ void writeSettingInJson(StaticJsonDocument<confSize> &doc)
   doc[ap_ssid_str] = apSsid;
   doc[ap_pass_str] = apPass;
   doc[ap_ip_str] = apIP.toString();
+  doc[ap_gateway_str] = apGateway.toString();
   doc[ap_mask_str] = apMask.toString();
   doc[ssid_str] = staSsid;
   doc[pass_str] = staPass;
@@ -550,6 +585,9 @@ void writeSettingInJson(StaticJsonDocument<confSize> &doc)
   doc[gateway_str] = staGateway.toString();
   doc[mask_str] = staMask.toString();
   doc[ap_sta_mode_str] = (byte)ap_sta_mode;
+  doc[use_adm_pass_str] = (byte)useAdmPass;
+  doc[a_name_str] = admName;
+  doc[a_pass_str] = admPass;
 }
 
 void println(String msg)
