@@ -8,6 +8,8 @@ static WebServer *http_server = NULL;
 static ESP8266WebServer *http_server = NULL;
 #endif
 
+static LedState led;
+
 static FS *file_system;
 
 static const int confSize = 1024;
@@ -26,7 +28,15 @@ static void println(String msg);
 static void print(String msg);
 static void readJsonSetting(StaticJsonDocument<confSize> &doc);
 static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
-static void redirectPath(byte x);
+
+static bool find_ap(String ssid);
+static void set_cur_mode(WiFiMode _mode);
+static void set_sta_config(IPAddress ip, IPAddress gateway, IPAddress mask);
+static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask);
+static bool start_wifi();
+static void stop_wifi();
+static bool start_sta(String ssid, String pass);
+static bool start_ap(String ssid, String pass, bool combo_mode = false);
 
 // ==== настройки WiFi ===============================
 
@@ -50,6 +60,9 @@ static bool useComboMode = false;
 static bool useAdmPass = false;
 static String admName = "";
 static String admPass = "";
+static bool useLed = true;
+static bool ledOn = true;
+static int8_t ledPin = -1;
 
 static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
@@ -73,6 +86,8 @@ static const String ap_sta_mode_str = "ap_sta";
 static const String use_adm_pass_str = "use_adm_pass";
 static const String a_name_str = "a_name";
 static const String a_pass_str = "a_pass";
+static const String use_led_str = "use_led";
+static const String led_on_off = "led_on";
 
 // ==== shWiFiConfig class ===========================
 
@@ -87,13 +102,9 @@ shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
   setAdminNameEndPass(adm_name, adm_pass);
 }
 
-void shWiFiConfig::setLogOnState(bool log_on) { logOnState = log_on; }
+void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkTimer = _timer; }
 
-void shWiFiConfig::setCurMode(WiFiMode _mode)
-{
-  curMode = _mode;
-  WiFi.mode(_mode);
-}
+void shWiFiConfig::setLogOnState(bool log_on) { logOnState = log_on; }
 
 void shWiFiConfig::setApSsid(String ap_ssid) { apSsid = ap_ssid; }
 
@@ -125,6 +136,24 @@ void shWiFiConfig::setUseComboMode(bool mode_on) { useComboMode = mode_on; }
 
 void shWiFiConfig::setUseAdminPass(bool pass_on) { useAdmPass = pass_on; }
 
+void shWiFiConfig::setUseLed(bool _use, int8_t _pin)
+{
+  ledPin = _pin;
+  useLed = (ledPin >= 0) ? _use : false;
+  led.setPin(_pin);
+  if (!useLed)
+  {
+    led.setUseLed(useLed);
+    setLedOnMode(false);
+  }
+}
+
+void shWiFiConfig::setLedOnMode(bool mode_on)
+{
+  ledOn = mode_on;
+  led.setUseLed(mode_on);
+}
+
 void shWiFiConfig::setAdminNameEndPass(String a_name, String a_pass)
 {
   if (a_name != emptyString && a_pass != emptyString)
@@ -134,6 +163,8 @@ void shWiFiConfig::setAdminNameEndPass(String a_name, String a_pass)
     admPass = a_pass;
   }
 }
+
+uint32_t shWiFiConfig::getCheckTimer() { return (checkTimer); }
 
 bool shWiFiConfig::getLogOnState() { return (logOnState); }
 
@@ -173,29 +204,35 @@ String shWiFiConfig::getAdminPass() { return (admPass); }
 
 String shWiFiConfig::getAdminName() { return (admName); }
 
+bool shWiFiConfig::getUseLed() { return (useLed); }
+
+bool shWiFiConfig::getLedOnMode() { return (ledOn); }
+
+int8_t shWiFiConfig::getLedPin() { return (ledPin); }
+
 void shWiFiConfig::setApConfig()
 {
-  setApConfig(apIP, apGateway, (IPAddress(255, 255, 255, 0)));
+  set_ap_config(apIP, apGateway, apMask);
 }
 
 void shWiFiConfig::setApConfig(IPAddress ip)
 {
-  setApConfig(ip, ip, (IPAddress(255, 255, 255, 0)));
+  set_ap_config(ip, ip, (IPAddress(255, 255, 255, 0)));
 }
 
 void shWiFiConfig::setApConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
 {
-  WiFi.softAPConfig(ip, gateway, mask);
+  set_ap_config(ip, gateway, mask);
 }
 
 void shWiFiConfig::setStaConfig()
 {
-  setStaConfig(staIP, staGateway, staMask);
+  set_sta_config(staIP, staGateway, staMask);
 }
 
 void shWiFiConfig::setStaConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
 {
-  WiFi.config(ip, gateway, mask);
+  set_sta_config(ip, gateway, mask);
 }
 
 #if defined(ARDUINO_ARCH_ESP32)
@@ -206,15 +243,24 @@ bool shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _co
 {
   http_server = _server;
   file_system = _file_system;
-  _fsOK = file_system->begin();
 
   // вызов страницы настройки WiFi
   http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
-  http_server->on("/getconfig", HTTP_GET, handleReadSetting);
-  http_server->on("/setconfig", HTTP_POST, handleWriteSetting);
-  http_server->on("/getaplist", HTTP_GET, handleReadApList);
+  http_server->on("/wifi_getconfig", HTTP_GET, handleReadSetting);
+  http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
+  http_server->on("/wifi_getaplist", HTTP_GET, handleReadApList);
 
-  return (_fsOK);
+  return (true);
+}
+
+void shWiFiConfig::tick()
+{
+  static uint32_t timer = millis();
+  if (millis() - timer > checkTimer)
+  {
+    timer = millis();
+    checkStaConnection();
+  }
 }
 
 bool shWiFiConfig::loadConfig()
@@ -264,88 +310,39 @@ bool shWiFiConfig::loadConfig()
   return (result);
 }
 
+bool shWiFiConfig::startWiFi()
+{
+  return (start_wifi());
+}
+
+void shWiFiConfig::stopWiFi()
+{
+  stop_wifi();
+}
+
 bool shWiFiConfig::startSoftAP()
 {
-  bool result = false;
-  println(F("Create WiFi access point ") + apSsid);
+  return (start_ap(apSsid, apPass));
+}
 
-  setCurMode(WIFI_AP);
-  setApConfig();
-  result = WiFi.softAP(apSsid, apPass);
-  if (result)
-  {
-    println(F("Access point SSID: ") + WiFi.softAPSSID());
-    println(F("Access point IP: ") + WiFi.softAPIP().toString() + "\n");
-  }
-  else
-  {
-    println(F("Access point failed"));
-  }
-
-  return (result);
+bool shWiFiConfig::startSoftAP(String ssid, String pass)
+{
+  return (start_ap(ssid, pass));
 }
 
 bool shWiFiConfig::startSTA()
 {
-  return (startSTA(staSsid, staPass));
+  return (start_sta(staSsid, staPass));
 }
 
 bool shWiFiConfig::startSTA(String ssid, String pass)
 {
-  bool result = false;
-  println(F("Connecting to WiFi network ") + ssid);
-  (ap_sta_mode) ? setCurMode(WIFI_AP_STA) : setCurMode(WIFI_STA);
-  WiFi.hostname(apSsid);
-  if (staticIP)
-  {
-    setStaConfig();
-  }
-  WiFi.begin(ssid, pass);
-  result = WiFi.waitForConnectResult() == WL_CONNECTED;
-  if (result)
-  {
-    println(F("Connection: ") + WiFi.SSID());
-    println(F("IP: ") + WiFi.localIP().toString());
-    println(F("HostName: ") + WiFi.hostname() + "\n");
-
-    badPassword = false;
-  }
-  else
-  {
-    println(F("Failed to connect to ") + ssid);
-    if (wifi_station_get_connect_status() == STATION_WRONG_PASSWORD)
-    {
-      println(F("Incorrect password!"));
-      badPassword = true;
-    }
-    println("");
-  }
-
-  return (result);
+  return (start_sta(ssid, pass));
 }
 
 bool shWiFiConfig::findSavedAp()
 {
-  return (findAp(staSsid));
-}
-
-bool shWiFiConfig::findAp(String ssid)
-{
-  bool result = false;
-
-  int8_t n = WiFi.scanNetworks();
-  if (n > 0)
-  {
-    for (byte i = 0; i < n; ++i)
-    {
-      if (WiFi.SSID(i) == ssid)
-      {
-        result = true;
-        break;
-      }
-    }
-  }
-  return (result);
+  return (find_ap(staSsid));
 }
 
 void shWiFiConfig::checkStaConnection()
@@ -389,7 +386,7 @@ void shWiFiConfig::checkStaConnection()
 
 // ==== реакции сервера ==============================
 
-void handleGetConfigPage()
+static void handleGetConfigPage()
 {
   if (useAdmPass &&
       admName != emptyString &&
@@ -401,12 +398,13 @@ void handleGetConfigPage()
   http_server->send(200, FPSTR(TEXT_HTML), FPSTR(config_page));
 }
 
-void handleReadSetting()
+static void handleReadSetting()
 {
   StaticJsonDocument<confSize> doc;
 
   writeSettingInJson(doc);
   doc[use_combo_mode_str] = (byte)useComboMode;
+  doc[use_led_str] = (byte)useLed;
 
   String json = "";
   serializeJson(doc, json);
@@ -414,7 +412,7 @@ void handleReadSetting()
   http_server->send(200, FPSTR(TEXT_JSON), json);
 }
 
-void handleWriteSetting()
+static void handleWriteSetting()
 {
   if (http_server->hasArg("plain") == false)
   {
@@ -439,58 +437,59 @@ void handleWriteSetting()
     badPassword = false;
 
     // определить необходимость перезагрузки модуля
-    bool reboot = false;
+    bool reconnect = false;
 
     if (curMode == WIFI_STA || curMode == WIFI_AP_STA)
     {
-      reboot = (staSsid != doc[ssid_str].as<String>()) ||
-               (staPass != doc[pass_str].as<String>());
-      if (!reboot)
+      reconnect = (staSsid != doc[ssid_str].as<String>()) ||
+                  (staPass != doc[pass_str].as<String>());
+      if (!reconnect)
       {
-        reboot = staticIP != (bool)doc[static_ip_str].as<byte>();
-        if (!reboot && staticIP)
+        reconnect = staticIP != (bool)doc[static_ip_str].as<byte>();
+        if (!reconnect && staticIP)
         {
           IPAddress ip;
-          reboot = (ip.fromString(doc[ip_str].as<String>()) &&
-                    ((uint32_t)ip != (uint32_t)staIP)) ||
-                   (ip.fromString(doc[gateway_str].as<String>()) &&
-                    ((uint32_t)ip != (uint32_t)staGateway)) ||
-                   (ip.fromString(doc[mask_str].as<String>()) &&
-                    ((uint32_t)ip != (uint32_t)staMask));
+          reconnect = (ip.fromString(doc[ip_str].as<String>()) &&
+                       ((uint32_t)ip != (uint32_t)staIP)) ||
+                      (ip.fromString(doc[gateway_str].as<String>()) &&
+                       ((uint32_t)ip != (uint32_t)staGateway)) ||
+                      (ip.fromString(doc[mask_str].as<String>()) &&
+                       ((uint32_t)ip != (uint32_t)staMask));
         }
       }
     }
-    if (!reboot && (curMode == WIFI_AP || curMode == WIFI_AP_STA))
+    if (!reconnect && (curMode == WIFI_AP || curMode == WIFI_AP_STA))
     {
-      reboot = (apSsid != doc[ap_ssid_str].as<String>()) ||
-               (apPass != doc[ap_pass_str].as<String>());
-      if (!reboot)
+      reconnect = (apSsid != doc[ap_ssid_str].as<String>()) ||
+                  (apPass != doc[ap_pass_str].as<String>());
+      if (!reconnect)
       {
         IPAddress ip;
-        reboot = (ip.fromString(doc[ap_ip_str].as<String>()) &&
-                  ((uint32_t)ip != (uint32_t)apIP)) ||
-                 (ip.fromString(doc[ap_mask_str].as<String>()) &&
-                  ((uint32_t)ip != (uint32_t)apMask));
+        reconnect = (ip.fromString(doc[ap_ip_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)apIP)) ||
+                    (ip.fromString(doc[ap_mask_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)apMask));
       }
     }
-    if (!reboot)
+    if (!reconnect)
     {
-      reboot = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
+      reconnect = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
     }
 
     readJsonSetting(doc);
     saveConfig();
     const String successResponse0 =
-        F("<META http-equiv=\"refresh\" content=\"5;URL=/\">Module is reboot, wait...");
+        F("<META http-equiv=\"refresh\" content=\"5;URL=/\">The module will be reconnected, wait...");
     const String successResponse1 =
         F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
     http_server->client().setNoDelay(true);
-    // Если изменили опции, требующие перезагрузки, перезапустить модуль
-    if (reboot)
+    // Если изменили опции, требующие переподключения, переподключить модуль
+    if (reconnect)
     {
       http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
       delay(100);
-      ESP.restart();
+      stop_wifi();
+      start_wifi();
     }
     else
     {
@@ -499,7 +498,7 @@ void handleWriteSetting()
   }
 }
 
-void handleReadApList()
+static void handleReadApList()
 {
   int n = WiFi.scanNetworks();
 
@@ -528,16 +527,9 @@ static void handleShowSavePage()
   http_server->send(200, FPSTR(TEXT_HTML), successResponse);
 }
 
-static void handleShowRebootPage()
-{
-  const String successResponse =
-      F("Module is reboot, wait... <label id='_x'>15</label><script>function _counter(){var x = Number(document.getElementById('_x').innerText) - 1;if (x >= 0) document.getElementById('_x').innerText = x;else window.open('/', '_self', false);}setInterval(_counter, 1000);</script>");
-  http_server->send(200, FPSTR(TEXT_HTML), successResponse);
-}
-
 // ===================================================
 
-bool saveConfig()
+static bool saveConfig()
 {
   File configFile;
 
@@ -574,7 +566,7 @@ bool saveConfig()
   return (result);
 }
 
-void readJsonSetting(StaticJsonDocument<confSize> &doc)
+static void readJsonSetting(StaticJsonDocument<confSize> &doc)
 {
   String _str[] = {ap_ssid_str, ap_pass_str, ssid_str, pass_str, a_name_str, a_pass_str,
                    ap_ip_str, ap_gateway_str, ap_mask_str, ip_str, gateway_str, mask_str};
@@ -585,6 +577,8 @@ void readJsonSetting(StaticJsonDocument<confSize> &doc)
   staticIP = doc[static_ip_str].as<bool>();
   ap_sta_mode = doc[ap_sta_mode_str].as<bool>();
   useAdmPass = doc[use_adm_pass_str].as<bool>();
+  ledOn = doc[led_on_off].as<bool>();
+  led.setUseLed(ledOn);
 
   for (byte i = 0; i < 6; i++)
   {
@@ -607,7 +601,7 @@ void readJsonSetting(StaticJsonDocument<confSize> &doc)
   }
 }
 
-void writeSettingInJson(StaticJsonDocument<confSize> &doc)
+static void writeSettingInJson(StaticJsonDocument<confSize> &doc)
 {
   doc[ap_ssid_str] = apSsid;
   doc[ap_pass_str] = apPass;
@@ -624,9 +618,148 @@ void writeSettingInJson(StaticJsonDocument<confSize> &doc)
   doc[use_adm_pass_str] = (byte)useAdmPass;
   doc[a_name_str] = admName;
   doc[a_pass_str] = admPass;
+  doc[led_on_off] = (byte)ledOn;
 }
 
-void println(String msg)
+static bool find_ap(String ssid)
+{
+  bool result = false;
+
+  led.init(100, true);
+  print(F("Searche for access point "));
+  println(ssid);
+  int8_t n = WiFi.scanNetworks();
+  if (n > 0)
+  {
+    for (byte i = 0; i < n; ++i)
+    {
+      if (WiFi.SSID(i) == ssid)
+      {
+        result = true;
+        break;
+      }
+    }
+  }
+  (result) ? println(F("OK")) : println(F("not found"));
+  return (result);
+}
+
+static void set_cur_mode(WiFiMode _mode)
+{
+  curMode = _mode;
+  WiFi.mode(_mode);
+}
+
+static void set_sta_config(IPAddress ip, IPAddress gateway, IPAddress mask)
+{
+  WiFi.config(ip, gateway, mask);
+}
+
+static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask)
+{
+  WiFi.softAPConfig(ip, gateway, mask);
+}
+
+static bool start_wifi()
+{ 
+  bool result = start_sta(staSsid, staPass);
+  if (!result)
+  {
+    stop_wifi();
+    result = start_ap(apSsid, apPass);
+  }
+
+  return (result);
+}
+
+static void stop_wifi()
+{
+  if (curMode == WIFI_STA || curMode == WIFI_AP_STA)
+  {
+    WiFi.disconnect();
+  }
+  if (curMode == WIFI_AP || curMode == WIFI_AP_STA)
+  {
+    WiFi.softAPdisconnect();
+  }
+  set_cur_mode(WIFI_OFF);
+}
+
+static bool start_sta(String ssid, String pass)
+{
+  bool result = false;
+
+  (useComboMode && ap_sta_mode) ? set_cur_mode(WIFI_AP_STA)
+                                : set_cur_mode(WIFI_STA);
+  if (curMode > WIFI_STA)
+  {
+    start_ap(apSsid, apPass, true);
+  }
+
+  if (find_ap(ssid))
+  {
+    WiFi.hostname(apSsid);
+    if (staticIP)
+    {
+      set_sta_config(staIP, staGateway, staMask);
+    }
+    else
+    {
+      WiFi.config(0, 0, 0);
+    }
+    led.init(100, true);
+    println(F("Connecting to WiFi network ") + ssid);
+    WiFi.begin(ssid, pass);
+    result = WiFi.waitForConnectResult() == WL_CONNECTED;
+    if (result)
+    {
+      println(F("Connection: ") + WiFi.SSID());
+      println(F("IP: ") + WiFi.localIP().toString());
+      println(F("HostName: ") + WiFi.hostname() + "\n");
+
+      badPassword = false;
+      led.init();
+    }
+    else
+    {
+      println(F("Failed to connect to ") + ssid);
+      if (wifi_station_get_connect_status() == STATION_WRONG_PASSWORD)
+      {
+        println(F("Incorrect password!"));
+        badPassword = true;
+      }
+    }
+  }
+  println("");
+
+  return (result);
+}
+
+static bool start_ap(String ssid, String pass, bool combo_mode)
+{
+  bool result = false;
+  println(F("Create WiFi access point ") + ssid);
+
+  led.init(100, true);
+  (combo_mode) ? set_cur_mode(WIFI_AP_STA) : set_cur_mode(WIFI_AP);
+  set_ap_config(apIP, apGateway, apMask);
+  result = WiFi.softAP(ssid, pass);
+  if (result)
+  {
+    println(F("Access point SSID: ") + WiFi.softAPSSID());
+    println(F("Access point IP: ") + WiFi.softAPIP().toString());
+    led.init(500);
+  }
+  else
+  {
+    println(F("Access point failed"));
+  }
+  println("");
+
+  return (result);
+}
+
+static void println(String msg)
 {
   if (logOnState)
   {
@@ -634,7 +767,7 @@ void println(String msg)
   }
 }
 
-void print(String msg)
+static void print(String msg)
 {
   if (logOnState)
   {
@@ -642,22 +775,94 @@ void print(String msg)
   }
 }
 
-void redirectPath(byte x)
+// ===================================================
+
+void changeLedState()
 {
-  const String successResponse0 =
-      F("Module is reboot, wait... <label id='_x'>15</label><script>function _counter(){var x = Number(document.getElementById('_x').innerText) - 1;if (x >= 0) document.getElementById('_x').innerText = x;else window.open('/', '_self', false);}setInterval(_counter, 1000);</script>");
-  const String successResponse1 =
-      F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
-  http_server->client().setNoDelay(true);
-  switch (x)
+  led.analogCheck();
+}
+
+void changeLedState1()
+{
+  led.digitalCheck();
+}
+
+LedState::LedState() {}
+
+void LedState::setPin(int8_t _pin)
+{
+  pin = _pin;
+  if (pin >= 0)
   {
-  case 1:
-    http_server->send(200, FPSTR(TEXT_HTML), successResponse1);
-    break;
-  default:
-    http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
-    break;
+    pinMode(pin, OUTPUT);
   }
-  delay(100);
-  http_server->client().stop();
+}
+
+void LedState::init(uint32_t interval, bool force)
+{
+  blink.detach();
+  if (pin >= 0)
+  {
+    digitalWrite(pin, HIGH);
+    if (use_led || force)
+    {
+      blink.attach_ms(interval, changeLedState1);
+    }
+  }
+}
+
+void LedState::init()
+{
+  blink.detach();
+  if (pin >= 0)
+  {
+    digitalWrite(pin, HIGH);
+    if (use_led)
+    {
+      pwr_value = 280;
+      toUp = false;
+
+      blink.attach_ms(10, changeLedState);
+    }
+  }
+}
+
+void LedState::stopLed()
+{
+  blink.detach();
+  if (pin >= 0)
+  {
+    digitalWrite(pin, HIGH);
+  }
+}
+
+void LedState::digitalCheck()
+{
+  if (pin >= 0)
+  {
+    digitalWrite(pin, !digitalRead(pin));
+  }
+}
+
+void LedState::analogCheck()
+{
+  if (pin >= 0)
+  {
+    analogWrite(pin, pwr_value);
+
+    (toUp) ? pwr_value++ : pwr_value--;
+    if (pwr_value >= 280 || pwr_value <= 0)
+    {
+      toUp = !toUp;
+    }
+  }
+}
+
+void LedState::setUseLed(bool _use)
+{
+  use_led = _use;
+  if (!use_led)
+  {
+    stopLed();
+  }
 }

@@ -247,8 +247,18 @@ static const char config_page[] PROGMEM =
               name='a_pass'
               id='a_pass'
               placeholder='пароль для входа в настройки'
-            />
+            />            
           </div>
+          <br />
+          <label style='margin-left: 10px' id="led_on_lab">
+            <input
+              type='checkbox'
+              name='led_on'
+              id='led_on'
+              style='margin-left: 0px'
+            />
+            Использовать индикаторный светодиод</label
+          >
         </div>
         <input
           type='button'
@@ -378,7 +388,9 @@ static const char config_page[] PROGMEM =
       function showDiv(id1, id2, btnEnbl) {
         var x = document.getElementById(id1).checked ? 'block' : 'none';
         document.getElementById(id2).style.display = x;
-       if(btnEnbl) {enableBtnSave();}
+        if (btnEnbl) {
+          enableBtnSave();
+        }
       }
       function sendData() {
         if (validate_form()) {
@@ -399,11 +411,14 @@ static const char config_page[] PROGMEM =
             use_adm_pass: document.getElementById('use_adm_pass').checked,
             a_name: document.getElementById('a_name').value,
             a_pass: document.getElementById('a_pass').value,
+            led_on: document.getElementById('led_on').checked
           };
           var xhr = new XMLHttpRequest();
-          xhr.open('POST', '/setconfig', true);
+          xhr.open('POST', '/wifi_setconfig', true);
           xhr.setRequestHeader('Content-Type', 'text/json');
-          xhr.onreadystatechange = function () {document.body.innerHTML = this.responseText;};
+          xhr.onreadystatechange = function () {
+            document.body.innerHTML = this.responseText;
+          };
           xhr.send(JSON.stringify(form_data));
         }
       }
@@ -414,7 +429,7 @@ static const char config_page[] PROGMEM =
           sel.remove(0);
         }
         var request = new XMLHttpRequest();
-        request.open('GET', '/getaplist', true);
+        request.open('GET', '/wifi_getaplist', true);
         request.onload = function () {
           if (request.readyState == 4 && request.status == 200) {
             var config_str = request.responseText;
@@ -439,7 +454,7 @@ static const char config_page[] PROGMEM =
       }
       function getConfig() {
         var request = new XMLHttpRequest();
-        request.open('GET', '/getconfig', true);
+        request.open('GET', '/wifi_getconfig', true);
         request.onload = function () {
           if (request.readyState == 4 && request.status == 200) {
             var config_str = request.responseText;
@@ -477,6 +492,11 @@ static const char config_page[] PROGMEM =
             showDiv('use_adm_pass', 'adm_pass', false);
             document.getElementById('a_name').setAttribute('value', doc.a_name);
             document.getElementById('a_pass').setAttribute('value', doc.a_pass);
+            if (doc.use_led != 1) {
+              document.getElementById('led_on_lab').style.display = 'none';
+            } else {
+              document.getElementById('led_on').checked = doc.led_on == 1;
+            }
           }
         };
         request.send();
@@ -572,6 +592,9 @@ static const char config_page[] PROGMEM =
         .addEventListener('input', enableBtnSave);
       document
         .getElementById('a_pass')
+        .addEventListener('input', enableBtnSave);
+      document
+        .getElementById('led_on')
         .addEventListener('input', enableBtnSave);
       document.addEventListener('DOMContentLoaded', getConfig);
     </script>

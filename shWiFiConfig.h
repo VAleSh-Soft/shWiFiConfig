@@ -7,23 +7,24 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #else
-#error "Библиотека предназначена для использования в среде ESP8266 или ESP32"
+#error "The library is designed to be used in an ESP8266 or ESP32 environment"
 #endif
 #include <FS.h>
 #include <ArduinoJson.h>
+#include <Ticker.h>
 
-// ===================================================
+// ==== shWiFiConfig class ===========================
 class shWiFiConfig
 {
 private:
-  bool _fsOK = false;
+  uint32_t checkTimer = 20000;
 
 public:
   shWiFiConfig();
   shWiFiConfig(String adm_name, String adm_pass);
 
+  void setCheckTimer(uint32_t _timer);
   void setLogOnState(bool log_on);
-  void setCurMode(WiFiMode _mode);
   void setApSsid(String ap_ssid);
   void setApPass(String ap_pass);
   void setApIP(IPAddress ap_ip);
@@ -39,9 +40,12 @@ public:
   void setApStaMode(bool mode_on);
   void setUseComboMode(bool mode_on);
   void setUseAdminPass(bool pass_on);
-  
+  void setUseLed(bool _use, int8_t _pin = -1);
+  void setLedOnMode(bool mode_on);
+
   void setAdminNameEndPass(String a_name, String a_pass);
 
+  uint32_t getCheckTimer();
   bool getLogOnState();
   WiFiMode_t getCurMode();
   String getApSsid();
@@ -61,8 +65,9 @@ public:
   bool getUseAdminPass();
   String getAdminPass();
   String getAdminName();
-
-  bool fsOK() { return (_fsOK); }
+  bool getUseLed();
+  bool getLedOnMode();
+  int8_t getLedPin();
 
   void setApConfig();
   void setApConfig(IPAddress ip);
@@ -75,13 +80,38 @@ public:
 #else
   bool begin(ESP8266WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
 #endif
+  void tick();
   bool loadConfig();
+  bool startWiFi();
+  void stopWiFi();
 
   bool startSoftAP();
+  bool startSoftAP(String ssid, String pass);
   bool startSTA();
   bool startSTA(String ssid, String pass);
   bool findSavedAp();
-  bool findAp(String ssid);
 
   void checkStaConnection();
+};
+
+// ==== LedState class ===============================
+
+class LedState
+{
+private:
+  Ticker blink;
+  int16_t pwr_value = 280;
+  bool toUp = false;
+  int8_t pin;
+  bool use_led = true;
+
+public:
+  LedState();
+  void setPin(int8_t _pin);
+  void init(uint32_t interval, bool force = false);
+  void init();
+  void stopLed();
+  void digitalCheck();
+  void analogCheck();
+  void setUseLed(bool _use);
 };
