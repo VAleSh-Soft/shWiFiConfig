@@ -30,7 +30,7 @@ static void readJsonSetting(StaticJsonDocument<confSize> &doc);
 static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
 
 static bool find_ap(String ssid);
-static void set_cur_mode(WiFiMode _mode);
+static void set_cur_mode(WiFiMode_t _mode);
 static void set_sta_config(IPAddress ip, IPAddress gateway, IPAddress mask);
 static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask);
 static bool start_wifi();
@@ -246,8 +246,11 @@ bool shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _co
 
   // вызов страницы настройки WiFi
   http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
+  // заполнение полей страницы настройки WiFi
   http_server->on("/wifi_getconfig", HTTP_GET, handleReadSetting);
+  // сохранение настроек
   http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
+  // получение списка доступных точек доступа
   http_server->on("/wifi_getaplist", HTTP_GET, handleReadApList);
 
   return (true);
@@ -486,6 +489,9 @@ static void handleWriteSetting()
     // Если изменили опции, требующие переподключения, переподключить модуль
     if (reconnect)
     {
+      println("");
+      println(F("The module will be reconnected, wait..."));
+      println("");
       http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
       delay(100);
       stop_wifi();
@@ -644,7 +650,7 @@ static bool find_ap(String ssid)
   return (result);
 }
 
-static void set_cur_mode(WiFiMode _mode)
+static void set_cur_mode(WiFiMode_t _mode)
 {
   curMode = _mode;
   WiFi.mode(_mode);
@@ -661,7 +667,7 @@ static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask)
 }
 
 static bool start_wifi()
-{ 
+{
   bool result = start_sta(staSsid, staPass);
   if (!result)
   {
@@ -705,29 +711,40 @@ static bool start_sta(String ssid, String pass)
     }
     else
     {
-      WiFi.config(0, 0, 0);
+      WiFi.config((uint32_t)0, (uint32_t)0, (uint32_t)0);
     }
     led.init(100, true);
-    println(F("Connecting to WiFi network ") + ssid);
-    WiFi.begin(ssid, pass);
+    print(F("Connecting to WiFi network "));
+    println(ssid);
+    WiFi.begin(ssid.c_str(), pass.c_str());
     result = WiFi.waitForConnectResult() == WL_CONNECTED;
     if (result)
     {
-      println(F("Connection: ") + WiFi.SSID());
-      println(F("IP: ") + WiFi.localIP().toString());
-      println(F("HostName: ") + WiFi.hostname() + "\n");
+      print(F("Connected: "));
+      println(WiFi.SSID());
+      print(F("IP: "));
+      println(WiFi.localIP().toString());
+#if defined(ARDUINO_ARCH_ESP8266)
+      print(F("HostName: "));
+      println(WiFi.hostname());
+#endif
 
       badPassword = false;
       led.init();
     }
     else
     {
-      println(F("Failed to connect to ") + ssid);
+      print(F("Failed to connect to "));
+      println(ssid);
+#if defined(ARDUINO_ARCH_ESP8266)
       if (wifi_station_get_connect_status() == STATION_WRONG_PASSWORD)
       {
         println(F("Incorrect password!"));
         badPassword = true;
       }
+#else
+      badPassword = true;
+#endif
     }
   }
   println("");
@@ -738,16 +755,19 @@ static bool start_sta(String ssid, String pass)
 static bool start_ap(String ssid, String pass, bool combo_mode)
 {
   bool result = false;
-  println(F("Create WiFi access point ") + ssid);
+  print(F("Create WiFi access point "));
+  println(ssid);
 
   led.init(100, true);
   (combo_mode) ? set_cur_mode(WIFI_AP_STA) : set_cur_mode(WIFI_AP);
   set_ap_config(apIP, apGateway, apMask);
-  result = WiFi.softAP(ssid, pass);
+  result = WiFi.softAP(ssid.c_str(), pass.c_str());
   if (result)
   {
-    println(F("Access point SSID: ") + WiFi.softAPSSID());
-    println(F("Access point IP: ") + WiFi.softAPIP().toString());
+    print(F("Access point SSID: "));
+    println(WiFi.softAPSSID());
+    print(F("Access point IP: "));
+    println(WiFi.softAPIP().toString());
     led.init(500);
   }
   else
@@ -819,10 +839,15 @@ void LedState::init()
     digitalWrite(pin, HIGH);
     if (use_led)
     {
-      pwr_value = 280;
+      pwr_value = max_pwm;
       toUp = false;
-
+#if defined(ARDUINO_ARCH_ESP32)
+      ledcSetup(0, 1000, 10);
+      ledcAttachPin(pin, 0);
+      blink.attach_ms(3, changeLedState);
+#else
       blink.attach_ms(10, changeLedState);
+#endif
     }
   }
 }
@@ -848,10 +873,14 @@ void LedState::analogCheck()
 {
   if (pin >= 0)
   {
+#if defined(ARDUINO_ARCH_ESP8266)
     analogWrite(pin, pwr_value);
+#else
+    ledcWrite(0, pwr_value);
+#endif
 
     (toUp) ? pwr_value++ : pwr_value--;
-    if (pwr_value >= 280 || pwr_value <= 0)
+    if (pwr_value >= max_pwm || pwr_value <= min_pwm)
     {
       toUp = !toUp;
     }

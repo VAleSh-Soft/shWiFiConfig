@@ -6,6 +6,7 @@
 #elif defined(ARDUINO_ARCH_ESP32)
 #include <WiFi.h>
 #include <WebServer.h>
+// #include <user_interface.h>
 #else
 #error "The library is designed to be used in an ESP8266 or ESP32 environment"
 #endif
@@ -104,7 +105,13 @@ private:
   bool toUp = false;
   int8_t pin;
   bool use_led = true;
-
+#if defined(ARDUINO_ARCH_ESP32)
+  int16_t max_pwm = 1023;
+  int16_t min_pwm = 0;
+#else
+  int16_t max_pwm = 280;
+  int16_t min_pwm = 0;
+#endif
 public:
   LedState();
   void setPin(int8_t _pin);
