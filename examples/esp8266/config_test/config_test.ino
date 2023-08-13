@@ -11,6 +11,16 @@
  где your_ip - IP-адрес модуля
 */
 
+// файловая система
+#define FILESYSTEM SPIFFS
+
+#if FILESYSTEM == LittleFS
+#include <LittleFS.h>
+#endif
+#if FILESYSTEM == SPIFFS
+#include <FS.h>
+#endif
+
 String ssid = "**********"; // имя (SSID) вашей Wi-Fi сети
 String pass = "**********"; // пароль для подключения к вашей Wi-Fi сети
 
@@ -18,20 +28,17 @@ String pass = "**********"; // пароль для подключения к в�
 ESP8266WebServer HTTP(80);
 // конфигурация WiFi
 shWiFiConfig wifi_config;
-// файловая система
-FS *fileSystem = &SPIFFS;
 
 void setup()
 {
   Serial.begin(115200);
   Serial.println();
 
-  wifi_config.setStaSsid(ssid);
-  wifi_config.setStaPass(pass);
-  wifi_config.begin(&HTTP, fileSystem);
+  wifi_config.setStaSsidData(ssid, pass);
+  wifi_config.begin(&HTTP, &FILESYSTEM);
 
   // ==== инициализируем файловую систему ============
-  if (fileSystem->begin())
+  if (FILESYSTEM.begin())
   {
 
     // ==== восстанавливаем настройки WiFi ========

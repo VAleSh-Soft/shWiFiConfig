@@ -10,7 +10,7 @@ static ESP8266WebServer *http_server = NULL;
 
 static LedState led;
 
-static FS *file_system;
+static FS *file_system = NULL;
 
 static const int confSize = 1024;
 
@@ -99,7 +99,7 @@ shWiFiConfig::shWiFiConfig()
 shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
 {
   WiFi.mode(curMode);
-  setAdminNameEndPass(adm_name, adm_pass);
+  setAdminData(adm_name, adm_pass);
 }
 
 void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkTimer = _timer; }
@@ -154,13 +154,25 @@ void shWiFiConfig::setLedOnMode(bool mode_on)
   led.setUseLed(mode_on);
 }
 
-void shWiFiConfig::setAdminNameEndPass(String a_name, String a_pass)
+void shWiFiConfig::setStaSsidData(String ssid, String pass)
 {
-  if (a_name != emptyString && a_pass != emptyString)
+  staSsid = ssid;
+  staPass = pass;
+}
+
+void shWiFiConfig::setApSsidData(String ssid, String pass)
+{
+  apSsid = ssid;
+  apPass = pass;
+}
+
+void shWiFiConfig::setAdminData(String name, String pass)
+{
+  if (name != emptyString && pass != emptyString)
   {
     useAdmPass = true;
-    admName = a_name;
-    admPass = a_pass;
+    admName = name;
+    admPass = pass;
   }
 }
 
@@ -236,9 +248,9 @@ void shWiFiConfig::setStaConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
 }
 
 #if defined(ARDUINO_ARCH_ESP32)
-bool shWiFiConfig::begin(WebServer *_server, FS *_file_system, String _config_page)
+void shWiFiConfig::begin(WebServer *_server, FS *_file_system, String _config_page)
 #else
-bool shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _config_page)
+void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _config_page)
 #endif
 {
   http_server = _server;
@@ -252,8 +264,6 @@ bool shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _co
   http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
   // получение списка доступных точек доступа
   http_server->on("/wifi_getaplist", HTTP_GET, handleReadApList);
-
-  return (true);
 }
 
 void shWiFiConfig::tick()
@@ -346,6 +356,11 @@ bool shWiFiConfig::startSTA(String ssid, String pass)
 bool shWiFiConfig::findSavedAp()
 {
   return (find_ap(staSsid));
+}
+
+bool shWiFiConfig::findAp(String ssid)
+{
+  return (find_ap(ssid));
 }
 
 void shWiFiConfig::checkStaConnection()
@@ -501,6 +516,7 @@ static void handleWriteSetting()
     {
       http_server->send(200, FPSTR(TEXT_HTML), successResponse1);
     }
+    led.startLed();
   }
 }
 
@@ -858,6 +874,23 @@ void LedState::stopLed()
   if (pin >= 0)
   {
     digitalWrite(pin, HIGH);
+  }
+}
+
+void LedState::startLed()
+{
+  switch (curMode)
+  {
+  case WIFI_AP:
+    init(500);
+    break;
+  case WIFI_STA:
+  case WIFI_AP_STA:
+    init();
+    break;
+  default:
+    stopLed();
+    break;
   }
 }
 

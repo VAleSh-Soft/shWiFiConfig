@@ -12,6 +12,8 @@
 */
 
 #define LED_BUILTIN 4
+
+// файловая система
 #define FILESYSTEM SPIFFS
 
 #if FILESYSTEM == FFat
@@ -34,8 +36,7 @@ void setup()
   Serial.begin(115200);
   Serial.println();
 
-  wifi_config.setStaSsid(ssid);
-  wifi_config.setStaPass(pass);
+  wifi_config.setStaSsidData(ssid, pass);
   wifi_config.begin(&HTTP, &FILESYSTEM);
 
   // ==== инициализируем файловую систему ============

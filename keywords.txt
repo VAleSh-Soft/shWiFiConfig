@@ -1,0 +1,78 @@
+#######################################
+# Syntax Coloring Map For shTaskManager
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+shWiFiConfig	KEYWORD1
+LedState	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2) 
+#######################################
+
+setCheckTimer	KEYWORD2
+setLogOnState	KEYWORD2
+setApSsid	KEYWORD2
+setApPass	KEYWORD2
+setApIP	KEYWORD2
+setApGateway	KEYWORD2
+setApMask	KEYWORD2
+setStaSsid	KEYWORD2
+setStaPass	KEYWORD2
+setStaIP	KEYWORD2
+setStaGateway	KEYWORD2
+setStaMask	KEYWORD2
+setStaticIpMode	KEYWORD2
+setConfigFileName	KEYWORD2
+setApStaMode	KEYWORD2
+setUseComboMode	KEYWORD2
+setUseAdminPass	KEYWORD2
+setUseLed	KEYWORD2
+setLedOnMode	KEYWORD2
+setStaSsidData	KEYWORD2
+setApSsidData	KEYWORD2
+setAdminData	KEYWORD2
+getCheckTimer	KEYWORD2
+getLogOnState	KEYWORD2
+getCurMode	KEYWORD2
+getApSsid	KEYWORD2
+getApPass	KEYWORD2
+getApIP	KEYWORD2
+getApGateway	KEYWORD2
+getApMask	KEYWORD2
+getStaSsid	KEYWORD2
+getStaPass	KEYWORD2
+getStaIP	KEYWORD2
+getStaGateway	KEYWORD2
+getStaMask	KEYWORD2
+getStaticIpMode	KEYWORD2
+getConfigFileName	KEYWORD2
+getApStaMode	KEYWORD2
+getUseComboMode	KEYWORD2
+getUseAdminPass	KEYWORD2
+getAdminPass	KEYWORD2
+getAdminName	KEYWORD2
+getUseLed	KEYWORD2
+getLedOnMode	KEYWORD2
+getLedPin	KEYWORD2
+setApConfig	KEYWORD2
+setStaConfig	KEYWORD2
+begin	KEYWORD2
+tick	KEYWORD2
+loadConfig	KEYWORD2
+startWiFi	KEYWORD2
+stopWiFi	KEYWORD2
+startSoftAP	KEYWORD2
+startSTA	KEYWORD2
+findAp	KEYWORD2
+findSavedAp	KEYWORD2
+checkStaConnection
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+

@@ -44,7 +44,9 @@ public:
   void setUseLed(bool _use, int8_t _pin = -1);
   void setLedOnMode(bool mode_on);
 
-  void setAdminNameEndPass(String a_name, String a_pass);
+  void setStaSsidData(String ssid, String pass);
+  void setApSsidData(String ssid, String pass);
+  void setAdminData(String name, String pass);
 
   uint32_t getCheckTimer();
   bool getLogOnState();
@@ -77,9 +79,9 @@ public:
   void setStaConfig(IPAddress ip, IPAddress gateway, IPAddress mask);
 
 #if defined(ARDUINO_ARCH_ESP32)
-  bool begin(WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
+  void begin(WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
 #else
-  bool begin(ESP8266WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
+  void begin(ESP8266WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
 #endif
   void tick();
   bool loadConfig();
@@ -91,6 +93,7 @@ public:
   bool startSTA();
   bool startSTA(String ssid, String pass);
   bool findSavedAp();
+  bool findAp(String ssid);
 
   void checkStaConnection();
 };
@@ -118,6 +121,7 @@ public:
   void init(uint32_t interval, bool force = false);
   void init();
   void stopLed();
+  void startLed();
   void digitalCheck();
   void analogCheck();
   void setUseLed(bool _use);
