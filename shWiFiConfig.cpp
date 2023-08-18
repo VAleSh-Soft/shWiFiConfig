@@ -21,9 +21,10 @@ static const char TEXT_JSON[] PROGMEM = "text/json";
 static void handleGetConfigPage();
 static void handleReadSetting();
 static void handleWriteSetting();
-static void handleReadApList();
+static void handleGetApList();
 
-static bool saveConfig();
+static bool save_config();
+static bool load_config();
 static void println(String msg);
 static void print(String msg);
 static void readJsonSetting(StaticJsonDocument<confSize> &doc);
@@ -263,7 +264,7 @@ void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _co
   // сохранение настроек
   http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
   // получение списка доступных точек доступа
-  http_server->on("/wifi_getaplist", HTTP_GET, handleReadApList);
+  http_server->on("/wifi_getaplist", HTTP_GET, handleGetApList);
 }
 
 void shWiFiConfig::tick()
@@ -278,49 +279,12 @@ void shWiFiConfig::tick()
 
 bool shWiFiConfig::loadConfig()
 {
-  File configFile;
-  // находим и открываем для чтения файл конфигурации
-  bool result = file_system->exists(fileName) &&
-                (configFile = file_system->open(fileName, "r"));
+  return (load_config());
+}
 
-  // если файл конфигурации не найден, сохранить настройки по умолчанию
-  if (!result)
-  {
-    println(F("WiFi config file not found, default config used."));
-    saveConfig();
-    return (result);
-  }
-
-  // Проверяем размер файла, будем использовать файл размером меньше 1024 байта
-  size_t size = configFile.size();
-  if (size > 1024)
-  {
-    println(F("WiFi configuration file size is too large."));
-    configFile.close();
-    return (false);
-  }
-
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use https://arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<confSize> doc;
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, configFile);
-  if (error)
-  {
-    print("Data serialization error: ");
-    println(error.f_str());
-    println(F("Failed to read WiFi config file, default config is used"));
-    result = false;
-  }
-  else
-  // Теперь можно получить значения из doc
-  {
-    readJsonSetting(doc);
-  }
-
-  return (result);
+bool shWiFiConfig::saveConfig()
+{
+  return (save_config());
 }
 
 bool shWiFiConfig::startWiFi()
@@ -495,11 +459,11 @@ static void handleWriteSetting()
     }
 
     readJsonSetting(doc);
-    saveConfig();
+    save_config();
     const String successResponse0 =
-        F("<META http-equiv=\"refresh\" content=\"5;URL=/\">The module will be reconnected, wait...");
+        F("<META http-equiv=\"refresh\" content=\"5;URL=/\"><p align=\"center\">The module will be reconnected, wait...</p>");
     const String successResponse1 =
-        F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
+        F("<META http-equiv=\"refresh\" content=\"1;URL=/\"><p align=\"center\">Save settings...</p>");
     http_server->client().setNoDelay(true);
     // Если изменили опции, требующие переподключения, переподключить модуль
     if (reconnect)
@@ -520,7 +484,7 @@ static void handleWriteSetting()
   }
 }
 
-static void handleReadApList()
+static void handleGetApList()
 {
   int n = WiFi.scanNetworks();
 
@@ -551,7 +515,7 @@ static void handleShowSavePage()
 
 // ===================================================
 
-static bool saveConfig()
+static bool save_config()
 {
   File configFile;
 
@@ -585,6 +549,53 @@ static bool saveConfig()
   }
 
   configFile.close();
+  return (result);
+}
+
+static bool load_config()
+{
+  File configFile;
+  // находим и открываем для чтения файл конфигурации
+  bool result = file_system->exists(fileName) &&
+                (configFile = file_system->open(fileName, "r"));
+
+  // если файл конфигурации не найден, сохранить настройки по умолчанию
+  if (!result)
+  {
+    println(F("WiFi config file not found, default config used."));
+    save_config();
+    return (result);
+  }
+
+  // Проверяем размер файла, будем использовать файл размером меньше 1024 байта
+  size_t size = configFile.size();
+  if (size > 1024)
+  {
+    println(F("WiFi configuration file size is too large."));
+    configFile.close();
+    return (false);
+  }
+
+  // Allocate a temporary JsonDocument
+  // Don't forget to change the capacity to match your requirements.
+  // Use https://arduinojson.org/v6/assistant to compute the capacity.
+  StaticJsonDocument<confSize> doc;
+
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, configFile);
+  if (error)
+  {
+    print("Data serialization error: ");
+    println(error.f_str());
+    println(F("Failed to read WiFi config file, default config is used"));
+    result = false;
+  }
+  else
+  // Теперь можно получить значения из doc
+  {
+    readJsonSetting(doc);
+  }
+
   return (result);
 }
 
