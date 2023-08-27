@@ -36,7 +36,7 @@ static void set_sta_config(IPAddress ip, IPAddress gateway, IPAddress mask);
 static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask);
 static bool start_wifi();
 static void stop_wifi();
-static bool start_sta(String ssid, String pass);
+static bool start_sta(String ssid, String pass, bool search_ssid = true);
 static bool start_ap(String ssid, String pass, bool combo_mode = false);
 
 // ==== настройки WiFi ===============================
@@ -341,7 +341,7 @@ void shWiFiConfig::checkStaConnection()
       {
         WiFi.softAPdisconnect();
       }
-      if (!startSoftAP())
+      if (!start_ap(apSsid, apPass))
       {
         ESP.restart();
       }
@@ -350,7 +350,7 @@ void shWiFiConfig::checkStaConnection()
   else
   {
     // пытаться искать и подключаться к сети только если пароль не помечен неверным
-    if (!badPassword && findSavedAp())
+    if (!badPassword && find_ap(staSsid))
     {
       // если наша сеть найдена, подключиться к ней
       if (curMode == WIFI_AP)
@@ -358,9 +358,9 @@ void shWiFiConfig::checkStaConnection()
         WiFi.softAPdisconnect();
       }
       // если не удалось, перейти в режим точки доступа
-      if (!startSTA())
+      if (!start_sta(staSsid, staPass, false))
       {
-        startSoftAP();
+        start_ap(apSsid, apPass);
       }
     }
   }
@@ -419,25 +419,20 @@ static void handleWriteSetting()
     badPassword = false;
 
     // определить необходимость перезагрузки модуля
-    bool reconnect = false;
-
-    if (curMode == WIFI_STA || curMode == WIFI_AP_STA)
+    bool reconnect = (staSsid != doc[ssid_str].as<String>()) ||
+                     (staPass != doc[pass_str].as<String>());
+    if (!reconnect)
     {
-      reconnect = (staSsid != doc[ssid_str].as<String>()) ||
-                  (staPass != doc[pass_str].as<String>());
-      if (!reconnect)
+      reconnect = staticIP != (bool)doc[static_ip_str].as<byte>();
+      if (!reconnect && staticIP)
       {
-        reconnect = staticIP != (bool)doc[static_ip_str].as<byte>();
-        if (!reconnect && staticIP)
-        {
-          IPAddress ip;
-          reconnect = (ip.fromString(doc[ip_str].as<String>()) &&
-                       ((uint32_t)ip != (uint32_t)staIP)) ||
-                      (ip.fromString(doc[gateway_str].as<String>()) &&
-                       ((uint32_t)ip != (uint32_t)staGateway)) ||
-                      (ip.fromString(doc[mask_str].as<String>()) &&
-                       ((uint32_t)ip != (uint32_t)staMask));
-        }
+        IPAddress ip;
+        reconnect = (ip.fromString(doc[ip_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)staIP)) ||
+                    (ip.fromString(doc[gateway_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)staGateway)) ||
+                    (ip.fromString(doc[mask_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)staMask));
       }
     }
     if (!reconnect && (curMode == WIFI_AP || curMode == WIFI_AP_STA))
@@ -658,22 +653,25 @@ static bool find_ap(String ssid)
 {
   bool result = false;
 
-  led.init(100, true);
-  print(F("Searche for access point "));
-  println(ssid);
-  int8_t n = WiFi.scanNetworks();
-  if (n > 0)
+  if (staSsid != emptyString)
   {
-    for (byte i = 0; i < n; ++i)
+    led.init(100, true);
+    print(F("Searche for access point "));
+    println(ssid);
+    int8_t n = WiFi.scanNetworks();
+    if (n > 0)
     {
-      if (WiFi.SSID(i) == ssid)
+      for (byte i = 0; i < n; ++i)
       {
-        result = true;
-        break;
+        if (WiFi.SSID(i) == ssid)
+        {
+          result = true;
+          break;
+        }
       }
     }
+    (result) ? println(F("OK")) : println(F("not found"));
   }
-  (result) ? println(F("OK")) : println(F("not found"));
   return (result);
 }
 
@@ -718,7 +716,7 @@ static void stop_wifi()
   set_cur_mode(WIFI_OFF);
 }
 
-static bool start_sta(String ssid, String pass)
+static bool start_sta(String ssid, String pass, bool search_ssid = true)
 {
   bool result = false;
 
@@ -729,7 +727,7 @@ static bool start_sta(String ssid, String pass)
     start_ap(apSsid, apPass, true);
   }
 
-  if (find_ap(ssid))
+  if (!search_ssid || find_ap(ssid))
   {
     WiFi.hostname(apSsid);
     if (staticIP)
@@ -808,7 +806,7 @@ static bool start_ap(String ssid, String pass, bool combo_mode)
 
 static void println(String msg)
 {
-  if (logOnState)
+  if (logOnState && Serial)
   {
     Serial.println(msg);
   }
@@ -816,7 +814,7 @@ static void println(String msg)
 
 static void print(String msg)
 {
-  if (logOnState)
+  if (logOnState && Serial)
   {
     Serial.print(msg);
   }
