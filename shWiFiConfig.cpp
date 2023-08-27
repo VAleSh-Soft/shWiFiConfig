@@ -716,7 +716,7 @@ static void stop_wifi()
   set_cur_mode(WIFI_OFF);
 }
 
-static bool start_sta(String ssid, String pass, bool search_ssid = true)
+static bool start_sta(String ssid, String pass, bool search_ssid)
 {
   bool result = false;
 
