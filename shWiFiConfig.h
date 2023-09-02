@@ -47,7 +47,7 @@ public:
    *
    * @param log_on true - включено; false - выключено
    */
-  void setLogOnState(bool log_on);
+  void setLogOnState(bool log_on, HardwareSerial *_serial = &Serial);
 
   /**
    * @brief установить имя точки доступа, создаваемой модулем

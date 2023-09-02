@@ -67,8 +67,10 @@ static int8_t ledPin = -1;
 
 static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
-static bool logOnState = true;
 static String fileName = "/wifi.json";
+
+static HardwareSerial *serial = NULL;
+static bool logOnState = true;
 
 // ==== Имена JSON-параметров ========================
 static const String ap_ssid_str = "ap_ssid";
@@ -95,6 +97,11 @@ static const String led_on_off = "led_on";
 shWiFiConfig::shWiFiConfig()
 {
   WiFi.mode(curMode);
+
+  if (&Serial != NULL)
+  {
+    serial = &Serial;
+  }
 }
 
 shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
@@ -105,7 +112,11 @@ shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
 
 void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkTimer = _timer; }
 
-void shWiFiConfig::setLogOnState(bool log_on) { logOnState = log_on; }
+void shWiFiConfig::setLogOnState(bool log_on, HardwareSerial *_serial)
+{
+  logOnState = log_on;
+  serial = (logOnState) ? _serial : NULL;
+}
 
 void shWiFiConfig::setApSsid(String ap_ssid) { apSsid = ap_ssid; }
 
@@ -806,21 +817,21 @@ static bool start_ap(String ssid, String pass, bool combo_mode)
 
 static void println(String msg)
 {
-  if (logOnState && Serial)
+  if (logOnState && serial)
   {
-    Serial.println(msg);
+    serial->println(msg);
   }
 }
 
 static void print(String msg)
 {
-  if (logOnState && Serial)
+  if (logOnState && serial)
   {
-    Serial.print(msg);
+    serial->print(msg);
   }
 }
 
-// ===================================================
+// ==== LedState class ===============================
 
 void changeLedState()
 {
