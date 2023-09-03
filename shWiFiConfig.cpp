@@ -943,6 +943,7 @@ void LedState::analogCheck()
 void LedState::setUseLed(bool _use)
 {
   use_led = _use;
+  
   if (!use_led)
   {
     stopLed();

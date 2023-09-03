@@ -66,7 +66,7 @@ public:
   /**
    * @brief установка IP-адреса точки доступа, создаваемой модулем
    *
-   * @param ap_ip новый IP
+   * @param ap_ip новый IP-адрес
    */
   void setApIP(IPAddress ap_ip);
 
