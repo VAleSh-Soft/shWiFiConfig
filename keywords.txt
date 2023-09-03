@@ -63,6 +63,7 @@ setStaConfig	KEYWORD2
 begin	KEYWORD2
 tick	KEYWORD2
 loadConfig	KEYWORD2
+saveConfig	KEYWORD2
 startWiFi	KEYWORD2
 stopWiFi	KEYWORD2
 startSoftAP	KEYWORD2
