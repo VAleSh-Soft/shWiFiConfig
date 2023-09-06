@@ -522,7 +522,7 @@ private:
   Ticker blink;
   int16_t pwr_value = 280;
   bool toUp = false;
-  int8_t pin;
+  int8_t pin = -1;;
   bool use_led = true;
 #if defined(ARDUINO_ARCH_ESP32)
   int16_t max_pwm = 1023;

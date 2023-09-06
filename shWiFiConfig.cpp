@@ -525,6 +525,9 @@ static bool save_config()
 {
   File configFile;
 
+  print(F("Save WiFi settings to file "));
+  println(fileName);
+
   bool result = false;
 
   // удалить существующий файл, иначе конфигурация будет добавлена ​​к файлу
@@ -549,7 +552,11 @@ static bool save_config()
   // сериализовать JSON-файл
   result = serializeJson(doc, configFile);
 
-  if (!result)
+  if (result)
+  {
+    println(F("OK"));
+  }
+  else
   {
     println(F("Failed to write WiFi configuration file"));
   }
@@ -560,6 +567,10 @@ static bool save_config()
 
 static bool load_config()
 {
+
+  print(F("Load WiFi settings from file "));
+  println(fileName);
+
   File configFile;
   // находим и открываем для чтения файл конфигурации
   bool result = file_system->exists(fileName) &&
@@ -600,6 +611,11 @@ static bool load_config()
   // Теперь можно получить значения из doc
   {
     readJsonSetting(doc);
+  }
+
+  if (result)
+  {
+    println(F("OK"));
   }
 
   return (result);
@@ -943,7 +959,7 @@ void LedState::analogCheck()
 void LedState::setUseLed(bool _use)
 {
   use_led = _use;
-  
+
   if (!use_led)
   {
     stopLed();
