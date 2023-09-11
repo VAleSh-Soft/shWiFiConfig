@@ -1,4 +1,3 @@
-#include <WiFi.h>
 #include <WebServer.h>
 #include <shWiFiConfig.h>
 
