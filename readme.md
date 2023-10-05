@@ -193,10 +193,10 @@ String getStaPass();
 ```
 void setStaticIpMode(bool static_ip);
 ```
-Включение/выключение опциим **Назначить IP вручную**.
+Включение/выключение опции **Назначить IP вручную**.
 
 ```
-void setStaticIpMode(bool static_ip);
+void getStaticIpMode(bool static_ip);
 ```
 соответственно, получение данных о состоянии опции.
 

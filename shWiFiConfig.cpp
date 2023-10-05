@@ -593,13 +593,12 @@ static bool load_config()
     return (false);
   }
 
-  // Allocate a temporary JsonDocument
-  // Don't forget to change the capacity to match your requirements.
-  // Use https://arduinojson.org/v6/assistant to compute the capacity.
   StaticJsonDocument<confSize> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, configFile);
+  configFile.close();
+
   if (error)
   {
     print("Data serialization error: ");

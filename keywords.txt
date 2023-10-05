@@ -70,7 +70,7 @@ startSoftAP	KEYWORD2
 startSTA	KEYWORD2
 findAp	KEYWORD2
 findSavedAp	KEYWORD2
-checkStaConnection
+checkStaConnection	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
