@@ -14,6 +14,9 @@
     - [Третья (опциональная) вкладка - **Режим Ap+STA**](#третья-опциональная-вкладка---режим-apsta)
     - [Четвертая вкладка - **Разное**](#четвертая-вкладка---разное)
 - [Зависимости](#зависимости)
+- [Аддоны для ESP8266 и ESP32](#аддоны-для-esp8266-и-esp32)
+  - [ESP8266](#esp8266)
+  - [ESP32](#esp32)
 
 
 ### Основные возможности
@@ -309,6 +312,24 @@ bool getLedOnMode()
 - `shButton.h` - https://github.com/VAleSh-Soft/shButton - работа с тактовыми кнопками;
 - `ArduinoJson.h` (не ниже версии 6.0) - https://github.com/bblanchon/ArduinoJson - работа с данными в формате JSON;
 
+
+### Аддоны для ESP8266 и ESP32
+
+Инструкцию по установке аддонов смотри в документации к **Arduino IDE.**
+
+#### ESP8266
+
+Для работы с **ESP8266** используется аддон **esp8266 by ESP8266 Community**, ссылка для установки:
+- http://arduino.esp8266.com/stable/package_esp8266com_index.json
+
+Если не знаете, какую плату выбрать, выбирайте **NodeMCU 1.0 (ESP-12E Module)**.
+
+#### ESP32
+
+Для работы с **ESP32** используется аддон **esp32 by Espressif Systems**, ссылка для установки:
+- https://dl.espressif.com/dl/package_esp32_index.json
+
+Если не знаете, какую плату выбрать, выбирайте **ESP32 Dev Module** (или **ESP32C3 Dev Module**, **ESP32S3 Dev Module**, **ESP32S2 Dev Module** - в зависимости от того, какой процессор используется на вашей плате).
 
 <hr>
 
