@@ -13,12 +13,11 @@
 #define LED_BUILTIN 4
 
 // файловая система
-#define FILESYSTEM SPIFFS
+#define FILESYSTEM FFat
 
 #if FILESYSTEM == FFat
 #include <FFat.h>
-#endif
-#if FILESYSTEM == SPIFFS
+#elif FILESYSTEM == SPIFFS
 #include <SPIFFS.h>
 #endif
 

@@ -8,7 +8,7 @@
 #include <WebServer.h>
 // #include <user_interface.h>
 #else
-#error "The library is designed to be used in an ESP8266 or ESP32 environment"
+#error "The library is designed for use in the ESP8266 or ESP32 environment."
 #endif
 #include <FS.h>
 #include <ArduinoJson.h>
@@ -46,8 +46,13 @@ public:
    * @brief включение/отключение выдачи сообщений о работе модуля через Serial
    *
    * @param log_on true - включено; false - выключено
+   * @param _serial интерфейс для вывода сообщений
    */
+#if ARDUINO_USB_CDC_ON_BOOT // Serial используется для USB CDC
+  void setLogOnState(bool log_on, HWCDC *_serial = &Serial);
+#else
   void setLogOnState(bool log_on, HardwareSerial *_serial = &Serial);
+#endif
 
   /**
    * @brief установить имя точки доступа, создаваемой модулем

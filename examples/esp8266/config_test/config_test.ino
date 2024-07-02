@@ -15,8 +15,7 @@
 
 #if FILESYSTEM == LittleFS
 #include <LittleFS.h>
-#endif
-#if FILESYSTEM == SPIFFS
+#elif FILESYSTEM == SPIFFS
 #include <FS.h>
 #endif
 

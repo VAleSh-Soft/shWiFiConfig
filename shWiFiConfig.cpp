@@ -69,7 +69,11 @@ static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
 static String fileName = "/wifi.json";
 
+#if ARDUINO_USB_CDC_ON_BOOT // Serial используется для USB CDC
+static HWCDC *serial = NULL;
+#else
 static HardwareSerial *serial = NULL;
+#endif
 static bool logOnState = true;
 
 // ==== Имена JSON-параметров ========================
@@ -106,13 +110,16 @@ shWiFiConfig::shWiFiConfig()
 
 shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
 {
-  WiFi.mode(curMode);
   setAdminData(adm_name, adm_pass);
 }
 
 void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkTimer = _timer; }
 
-void shWiFiConfig::setLogOnState(bool log_on, HardwareSerial *_serial)
+#if ARDUINO_USB_CDC_ON_BOOT // Serial используется для USB CDC
+  void shWiFiConfig::setLogOnState(bool log_on, HWCDC *_serial)
+#else
+  void shWiFiConfig::setLogOnState(bool log_on, HardwareSerial *_serial)
+#endif
 {
   logOnState = log_on;
   serial = (logOnState) ? _serial : NULL;
@@ -265,6 +272,8 @@ void shWiFiConfig::begin(WebServer *_server, FS *_file_system, String _config_pa
 void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _config_page)
 #endif
 {
+  WiFi.mode(curMode);
+
   http_server = _server;
   file_system = _file_system;
 
