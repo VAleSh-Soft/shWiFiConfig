@@ -116,9 +116,9 @@ shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
 void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkTimer = _timer; }
 
 #if ARDUINO_USB_CDC_ON_BOOT // Serial используется для USB CDC
-  void shWiFiConfig::setLogOnState(bool log_on, HWCDC *_serial)
+void shWiFiConfig::setLogOnState(bool log_on, HWCDC *_serial)
 #else
-  void shWiFiConfig::setLogOnState(bool log_on, HardwareSerial *_serial)
+void shWiFiConfig::setLogOnState(bool log_on, HardwareSerial *_serial)
 #endif
 {
   logOnState = log_on;
@@ -902,8 +902,12 @@ void LedState::init()
       pwr_value = max_pwm;
       toUp = false;
 #if defined(ARDUINO_ARCH_ESP32)
+#if ESP_ARDUINO_VERSION_MAJOR < 3
       ledcSetup(0, 1000, 10);
       ledcAttachPin(pin, 0);
+#else
+      ledcAttach(pin, 1000, 10);
+#endif
       blink.attach_ms(3, changeLedState);
 #else
       blink.attach_ms(10, changeLedState);
@@ -953,7 +957,11 @@ void LedState::analogCheck()
 #if defined(ARDUINO_ARCH_ESP8266)
     analogWrite(pin, pwr_value);
 #else
+#if ESP_ARDUINO_VERSION_MAJOR < 3
     ledcWrite(0, pwr_value);
+#else
+    analogWrite(pin, pwr_value);
+#endif
 #endif
 
     (toUp) ? pwr_value++ : pwr_value--;
