@@ -175,6 +175,14 @@ public:
   void setLedOnMode(bool mode_on);
 
   /**
+   * @brief установить значения ШИМ для максимальной и минимальной яркости индикаторного светодиода в режиме подключения к точке доступа (STA); т.к. светодиод подключается в обратной полярности (катодом к пину, анодом к VCC), максимальной яркости светодиода будет соответствовать минимальное значение ШИМ; максимальные значения - 1023
+   * 
+   * @param _max максимальный уровень ШИМ (для минимальной яркости светодиода)
+   * @param _min минимальный уровень ШИМ (для максимальной яркости светодиода)
+   */
+  void setLedPwmLevels(int16_t _max, int16_t _min);
+
+  /**
    * @brief установить данные WiFi-сети, к которой будет подключаться модуль
    *
    * @param ssid имя сети (SSID)
@@ -525,16 +533,21 @@ class LedState
 {
 private:
   Ticker blink;
-  int16_t pwr_value = 280;
   bool toUp = false;
-  int8_t pin = -1;;
+  int8_t pin = -1;
   bool use_led = true;
 #if defined(ARDUINO_ARCH_ESP32)
   int16_t max_pwm = 1023;
   int16_t min_pwm = 0;
+  int16_t pwr_value = max_pwm;
 #else
   int16_t max_pwm = 280;
   int16_t min_pwm = 0;
+  int16_t pwr_value = max_pwm;
+#endif
+  void writeLed(int16_t _value);
+#if defined(ARDUINO_ARCH_ESP32)
+  void setPwmData();
 #endif
 public:
   LedState();
@@ -546,4 +559,5 @@ public:
   void digitalCheck();
   void analogCheck();
   void setUseLed(bool _use);
+  void setLevelsForPWM(int16_t _max, int16_t _min);
 };

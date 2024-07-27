@@ -173,6 +173,11 @@ void shWiFiConfig::setLedOnMode(bool mode_on)
   led.setUseLed(mode_on);
 }
 
+void shWiFiConfig::setLedPwmLevels(int16_t _max, int16_t _min)
+{
+  led.setLevelsForPWM(_max, _min);
+}
+
 void shWiFiConfig::setStaSsidData(String ssid, String pass)
 {
   staSsid = ssid;
@@ -867,6 +872,27 @@ void changeLedState1()
   led.digitalCheck();
 }
 
+void LedState::writeLed(int16_t _value)
+{
+#if defined(ARDUINO_ARCH_ESP32) && ESP_ARDUINO_VERSION_MAJOR < 3
+  ledcWrite(0, _value);
+#else
+  analogWrite(pin, _value);
+#endif
+}
+
+#if defined(ARDUINO_ARCH_ESP32)
+void LedState::setPwmData()
+{
+#if ESP_ARDUINO_VERSION_MAJOR < 3
+  ledcSetup(0, 1000, 10);
+  ledcAttachPin(pin, 0);
+#else
+  ledcAttach(pin, 1000, 10);
+#endif
+}
+#endif
+
 LedState::LedState() {}
 
 void LedState::setPin(int8_t _pin)
@@ -883,7 +909,11 @@ void LedState::init(uint32_t interval, bool force)
   blink.detach();
   if (pin >= 0)
   {
-    digitalWrite(pin, HIGH);
+#if defined(ARDUINO_ARCH_ESP32)
+    setPwmData();
+#endif
+    toUp = false;
+    writeLed(max_pwm);
     if (use_led || force)
     {
       blink.attach_ms(interval, changeLedState1);
@@ -896,22 +926,17 @@ void LedState::init()
   blink.detach();
   if (pin >= 0)
   {
-    digitalWrite(pin, HIGH);
     if (use_led)
     {
       pwr_value = max_pwm;
       toUp = false;
 #if defined(ARDUINO_ARCH_ESP32)
-#if ESP_ARDUINO_VERSION_MAJOR < 3
-      ledcSetup(0, 1000, 10);
-      ledcAttachPin(pin, 0);
-#else
-      ledcAttach(pin, 1000, 10);
-#endif
+      setPwmData();
       blink.attach_ms(3, changeLedState);
 #else
       blink.attach_ms(10, changeLedState);
 #endif
+      writeLed(max_pwm);
     }
   }
 }
@@ -946,7 +971,9 @@ void LedState::digitalCheck()
 {
   if (pin >= 0)
   {
-    digitalWrite(pin, !digitalRead(pin));
+    pwr_value = (toUp) ? min_pwm : max_pwm;
+    toUp = !toUp;
+    writeLed(pwr_value);
   }
 }
 
@@ -954,15 +981,7 @@ void LedState::analogCheck()
 {
   if (pin >= 0)
   {
-#if defined(ARDUINO_ARCH_ESP8266)
-    analogWrite(pin, pwr_value);
-#else
-#if ESP_ARDUINO_VERSION_MAJOR < 3
-    ledcWrite(0, pwr_value);
-#else
-    analogWrite(pin, pwr_value);
-#endif
-#endif
+    writeLed(pwr_value);
 
     (toUp) ? pwr_value++ : pwr_value--;
     if (pwr_value >= max_pwm || pwr_value <= min_pwm)
@@ -980,4 +999,11 @@ void LedState::setUseLed(bool _use)
   {
     stopLed();
   }
+}
+
+void LedState::setLevelsForPWM(int16_t _max, int16_t _min)
+{
+
+  max_pwm = (_max < 1024) ? ((_max >= 0) ? _max : 0) : 1023;
+  min_pwm = (_min < 1024) ? ((_min >= 0) ? _min : 0) : 1023;
 }

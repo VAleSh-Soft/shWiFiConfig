@@ -32,6 +32,7 @@ setUseComboMode	KEYWORD2
 setUseAdminPass	KEYWORD2
 setUseLed	KEYWORD2
 setLedOnMode	KEYWORD2
+setLedPwmLevels	KEYWORD2
 setStaSsidData	KEYWORD2
 setApSsidData	KEYWORD2
 setAdminData	KEYWORD2
@@ -71,6 +72,14 @@ startSTA	KEYWORD2
 findAp	KEYWORD2
 findSavedAp	KEYWORD2
 checkStaConnection	KEYWORD2
+setPin	KEYWORD2
+init	KEYWORD2
+stopLed	KEYWORD2
+startLed	KEYWORD2
+digitalCheck	KEYWORD2
+analogCheck	KEYWORD2
+setUseLed	KEYWORD2
+setLevelsForPWM	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
