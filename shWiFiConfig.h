@@ -48,11 +48,7 @@ public:
    * @param log_on true - включено; false - выключено
    * @param _serial интерфейс для вывода сообщений
    */
-#if ARDUINO_USB_CDC_ON_BOOT // Serial используется для USB CDC
-  void setLogOnState(bool log_on, HWCDC *_serial = &Serial);
-#else
-  void setLogOnState(bool log_on, HardwareSerial *_serial = &Serial);
-#endif
+  void setLogOnState(bool log_on, Print *_serial = &Serial);
 
   /**
    * @brief установить имя точки доступа, создаваемой модулем

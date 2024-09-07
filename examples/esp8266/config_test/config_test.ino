@@ -61,8 +61,4 @@ void setup()
 void loop()
 {
   wifi_config.tick();
-
-  HTTP.handleClient();
-
-  delay(1);
 }
