@@ -40,7 +40,6 @@ void setup()
   {
 
     // ==== восстанавливаем настройки WiFi ========
-    Serial.println(F("Считывание настроек WiFi..."));
     wifi_config.loadConfig();
   }
 
@@ -54,7 +53,7 @@ void setup()
   HTTP.onNotFound([]()
                   { HTTP.send(404, "text/plan", F("404. File not found.")); });
 
-  Serial.println(F("Старт WEB-сервера"));
+  Serial.println(F("Starting the web server"));
   HTTP.begin();
 }
 
