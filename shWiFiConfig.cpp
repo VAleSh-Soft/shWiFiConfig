@@ -2,10 +2,10 @@
 #include "extras/c_page.h"
 #include <Arduino.h>
 
-#define print(x)            \
+#define WFC_PRINT(x)        \
   if (logOnState && serial) \
   serial->print(x)
-#define println(x)          \
+#define WFC_PRINTLN(x)      \
   if (logOnState && serial) \
   serial->println(x)
 
@@ -99,7 +99,7 @@ static const String led_on_off = "led_on";
 
 // ==== shWiFiConfig class ===========================
 
-shWiFiConfig::shWiFiConfig()
+static void set_config()
 {
   WiFi.mode(curMode);
 
@@ -109,8 +109,14 @@ shWiFiConfig::shWiFiConfig()
   }
 }
 
+shWiFiConfig::shWiFiConfig()
+{
+  set_config();
+}
+
 shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
 {
+  set_config();
   setAdminData(adm_name, adm_pass);
 }
 
@@ -359,7 +365,7 @@ void shWiFiConfig::checkStaConnection()
     // если мы в режиме точки доступа
     if (!WiFi.isConnected())
     {
-      println(F("WiFi connection lost"));
+      WFC_PRINTLN(F("WiFi connection lost"));
       // если пропала связь с роутером, перейти в режим точки доступа
       WiFi.disconnect();
       if (curMode == WIFI_AP_STA)
@@ -424,7 +430,7 @@ static void handleWriteSetting()
   if (http_server->hasArg("plain") == false)
   {
     http_server->send(200, FPSTR(TEXT_PLAIN), F("Body not received"));
-    println(F("Failed to save configuration data, no data"));
+    WFC_PRINTLN(F("Failed to save configuration data, no data"));
     return;
   }
 
@@ -436,8 +442,8 @@ static void handleWriteSetting()
   DeserializationError error = deserializeJson(doc, json);
   if (error)
   {
-    println(F("Failed to save configuration data, invalid json data"));
-    println(error.f_str());
+    WFC_PRINTLN(F("Failed to save configuration data, invalid json data"));
+    WFC_PRINTLN(error.f_str());
   }
   else
   {
@@ -488,9 +494,9 @@ static void handleWriteSetting()
     // Если изменили опции, требующие переподключения, переподключить модуль
     if (reconnect)
     {
-      println("");
-      println(F("The module will be reconnected, wait..."));
-      println("");
+      WFC_PRINTLN("");
+      WFC_PRINTLN(F("The module will be reconnected, wait..."));
+      WFC_PRINTLN("");
       http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
       delay(100);
       stop_wifi();
@@ -539,8 +545,8 @@ static bool save_config()
 {
   File configFile;
 
-  print(F("Save WiFi settings to file "));
-  println(fileName);
+  WFC_PRINT(F("Save WiFi settings to file "));
+  WFC_PRINTLN(fileName);
 
   bool result = false;
 
@@ -551,7 +557,7 @@ static bool save_config()
   configFile = file_system->open(fileName, "w");
   if (!configFile)
   {
-    println(F("Failed to create WiFi configuration file"));
+    WFC_PRINTLN(F("Failed to create WiFi configuration file"));
     return (result);
   }
 
@@ -568,11 +574,11 @@ static bool save_config()
 
   if (result)
   {
-    println(F("OK"));
+    WFC_PRINTLN(F("OK"));
   }
   else
   {
-    println(F("Failed to write WiFi configuration file"));
+    WFC_PRINTLN(F("Failed to write WiFi configuration file"));
   }
 
   configFile.close();
@@ -582,8 +588,8 @@ static bool save_config()
 static bool load_config()
 {
 
-  print(F("Load WiFi settings from file "));
-  println(fileName);
+  WFC_PRINT(F("Load WiFi settings from file "));
+  WFC_PRINTLN(fileName);
 
   File configFile;
   // находим и открываем для чтения файл конфигурации
@@ -593,7 +599,7 @@ static bool load_config()
   // если файл конфигурации не найден, сохранить настройки по умолчанию
   if (!result)
   {
-    println(F("WiFi config file not found, default config used."));
+    WFC_PRINTLN(F("WiFi config file not found, default config used."));
     save_config();
     return (result);
   }
@@ -602,7 +608,7 @@ static bool load_config()
   size_t size = configFile.size();
   if (size > 1024)
   {
-    println(F("WiFi configuration file size is too large."));
+    WFC_PRINTLN(F("WiFi configuration file size is too large."));
     configFile.close();
     return (false);
   }
@@ -615,9 +621,9 @@ static bool load_config()
 
   if (error)
   {
-    print("Data serialization error: ");
-    println(error.f_str());
-    println(F("Failed to read WiFi config file, default config is used"));
+    WFC_PRINT("Data serialization error: ");
+    WFC_PRINTLN(error.f_str());
+    WFC_PRINTLN(F("Failed to read WiFi config file, default config is used"));
     result = false;
   }
   else
@@ -628,7 +634,7 @@ static bool load_config()
 
   if (result)
   {
-    println(F("OK"));
+    WFC_PRINTLN(F("OK"));
   }
 
   return (result);
@@ -696,8 +702,8 @@ static bool find_ap(String ssid)
   if (staSsid != emptyString)
   {
     led.init(100, true);
-    print(F("Searche for access point "));
-    println(ssid);
+    WFC_PRINT(F("Searche for access point "));
+    WFC_PRINTLN(ssid);
     int8_t n = WiFi.scanNetworks();
     if (n > 0)
     {
@@ -713,11 +719,11 @@ static bool find_ap(String ssid)
 
     if (result)
     {
-      println(F("OK"));
+      WFC_PRINTLN(F("OK"));
     }
     else
     {
-      println(F("not found"));
+      WFC_PRINTLN(F("not found"));
     }
   }
   return (result);
@@ -787,19 +793,19 @@ static bool start_sta(String ssid, String pass, bool search_ssid)
       WiFi.config((uint32_t)0, (uint32_t)0, (uint32_t)0);
     }
     led.init(100, true);
-    print(F("Connecting to WiFi network "));
-    println(ssid);
+    WFC_PRINT(F("Connecting to WiFi network "));
+    WFC_PRINTLN(ssid);
     WiFi.begin(ssid.c_str(), pass.c_str());
     result = WiFi.waitForConnectResult() == WL_CONNECTED;
     if (result)
     {
-      print(F("Connected: "));
-      println(WiFi.SSID());
-      print(F("IP: "));
-      println(WiFi.localIP());
+      WFC_PRINT(F("Connected: "));
+      WFC_PRINTLN(WiFi.SSID());
+      WFC_PRINT(F("IP: "));
+      WFC_PRINTLN(WiFi.localIP());
 #if defined(ARDUINO_ARCH_ESP8266)
-      print(F("HostName: "));
-      println(WiFi.hostname());
+      WFC_PRINT(F("HostName: "));
+      WFC_PRINTLN(WiFi.hostname());
 #endif
 
       badPassword = false;
@@ -807,12 +813,12 @@ static bool start_sta(String ssid, String pass, bool search_ssid)
     }
     else
     {
-      print(F("Failed to connect to "));
-      println(ssid);
+      WFC_PRINT(F("Failed to connect to "));
+      WFC_PRINTLN(ssid);
 #if defined(ARDUINO_ARCH_ESP8266)
       if (wifi_station_get_connect_status() == STATION_WRONG_PASSWORD)
       {
-        println(F("Incorrect password!"));
+        WFC_PRINTLN(F("Incorrect password!"));
         badPassword = true;
       }
 #else
@@ -820,7 +826,7 @@ static bool start_sta(String ssid, String pass, bool search_ssid)
 #endif
     }
   }
-  println("");
+  WFC_PRINTLN("");
 
   return (result);
 }
@@ -828,8 +834,8 @@ static bool start_sta(String ssid, String pass, bool search_ssid)
 static bool start_ap(String ssid, String pass, bool combo_mode)
 {
   bool result = false;
-  print(F("Create WiFi access point "));
-  println(ssid);
+  WFC_PRINT(F("Create WiFi access point "));
+  WFC_PRINTLN(ssid);
 
   led.init(100, true);
   (combo_mode) ? set_cur_mode(WIFI_AP_STA) : set_cur_mode(WIFI_AP);
@@ -837,17 +843,17 @@ static bool start_ap(String ssid, String pass, bool combo_mode)
   result = WiFi.softAP(ssid.c_str(), pass.c_str());
   if (result)
   {
-    print(F("Access point SSID: "));
-    println(WiFi.softAPSSID());
-    print(F("Access point IP: "));
-    println(WiFi.softAPIP());
+    WFC_PRINT(F("Access point SSID: "));
+    WFC_PRINTLN(WiFi.softAPSSID());
+    WFC_PRINT(F("Access point IP: "));
+    WFC_PRINTLN(WiFi.softAPIP());
     led.init(500);
   }
   else
   {
-    println(F("Access point failed"));
+    WFC_PRINTLN(F("Access point failed"));
   }
-  println("");
+  WFC_PRINTLN("");
 
   return (result);
 }
