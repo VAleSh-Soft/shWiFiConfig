@@ -2,6 +2,13 @@
 #include "extras/c_page.h"
 #include <Arduino.h>
 
+#define print(x)            \
+  if (logOnState && serial) \
+  serial->print(x)
+#define println(x)          \
+  if (logOnState && serial) \
+  serial->println(x)
+
 #if defined(ARDUINO_ARCH_ESP32)
 static WebServer *http_server = NULL;
 #else
@@ -25,8 +32,6 @@ static void handleGetApList();
 
 static bool save_config();
 static bool load_config();
-static void println(String msg);
-static void print(String msg);
 static void readJsonSetting(StaticJsonDocument<confSize> &doc);
 static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
 
@@ -705,7 +710,15 @@ static bool find_ap(String ssid)
         }
       }
     }
-    (result) ? println(F("OK")) : println(F("not found"));
+
+    if (result)
+    {
+      println(F("OK"));
+    }
+    else
+    {
+      println(F("not found"));
+    }
   }
   return (result);
 }
@@ -783,7 +796,7 @@ static bool start_sta(String ssid, String pass, bool search_ssid)
       print(F("Connected: "));
       println(WiFi.SSID());
       print(F("IP: "));
-      println(WiFi.localIP().toString());
+      println(WiFi.localIP());
 #if defined(ARDUINO_ARCH_ESP8266)
       print(F("HostName: "));
       println(WiFi.hostname());
@@ -827,7 +840,7 @@ static bool start_ap(String ssid, String pass, bool combo_mode)
     print(F("Access point SSID: "));
     println(WiFi.softAPSSID());
     print(F("Access point IP: "));
-    println(WiFi.softAPIP().toString());
+    println(WiFi.softAPIP());
     led.init(500);
   }
   else
@@ -837,22 +850,6 @@ static bool start_ap(String ssid, String pass, bool combo_mode)
   println("");
 
   return (result);
-}
-
-static void println(String msg)
-{
-  if (logOnState && serial)
-  {
-    serial->println(msg);
-  }
-}
-
-static void print(String msg)
-{
-  if (logOnState && serial)
-  {
-    serial->print(msg);
-  }
 }
 
 // ==== LedState class ===============================
