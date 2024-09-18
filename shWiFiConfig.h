@@ -33,7 +33,7 @@ public:
    * @param adm_name логин для входа в Web-интерфейс
    * @param adm_pass пароль для входа в Web-интерфейс
    */
-  shWiFiConfig(String adm_name, String adm_pass);
+  shWiFiConfig(String &adm_name, String &adm_pass);
 
   /**
    * @brief установка интервала проверки состояния соединения; значение по умолчанию - 30 сек (30000 мсек)
@@ -55,70 +55,70 @@ public:
    *
    * @param ap_ssid новое имя (SSID)
    */
-  void setApSsid(String ap_ssid);
+  void setApSsid(String &ap_ssid);
 
   /**
    * @brief установить пароль для подключения к точке доступа, создаваемой модулем
    *
    * @param ap_pass новый пароль
    */
-  void setApPass(String ap_pass);
+  void setApPass(String &ap_pass);
 
   /**
    * @brief установка IP-адреса точки доступа, создаваемой модулем
    *
    * @param ap_ip новый IP-адрес
    */
-  void setApIP(IPAddress ap_ip);
+  void setApIP(IPAddress &ap_ip);
 
   /**
    * @brief установка адреса шлюза точки доступа, создаваемой модулем
    *
    * @param ap_gateway IP-адрес шлюза
    */
-  void setApGateway(IPAddress ap_gateway);
+  void setApGateway(IPAddress &ap_gateway);
 
   /**
    * @brief установка маски сети точки доступа, создаваемой модулем
    *
    * @param ap_mask маска сети
    */
-  void setApMask(IPAddress ap_mask);
+  void setApMask(IPAddress &ap_mask);
 
   /**
    * @brief установки имени WiFi-сети (SSID) для подключения
    *
    * @param sta_ssid SSID
    */
-  void setStaSsid(String sta_ssid);
+  void setStaSsid(String &sta_ssid);
 
   /**
    * @brief установка пароля для подключения к заданной WiFi-сети
    *
    * @param sta_pass пароль
    */
-  void setStaPass(String sta_pass);
+  void setStaPass(String &sta_pass);
 
   /**
    * @brief установить статический IP, с которым модуль будет подключаться к заданной WiFi-сети
    *
    * @param sta_ip IP
    */
-  void setStaIP(IPAddress sta_ip);
+  void setStaIP(IPAddress &sta_ip);
 
   /**
    * @brief установить адрес шлюза, с которым модуль будет подключаться к заданной WiFi-сети
    *
    * @param sta_gateway адрес шлюза
    */
-  void setStaGateway(IPAddress sta_gateway);
+  void setStaGateway(IPAddress &sta_gateway);
 
   /**
    * @brief установить маску сети, с которой модуль будет подключаться к заданной WiFi-сети
    *
    * @param sta_mask маска сети
    */
-  void setStaMask(IPAddress sta_mask);
+  void setStaMask(IPAddress &sta_mask);
 
   /**
    * @brief включить/отключить ручную установку IP-адреса, с которой модуль будет подключаться к заданной WiFi-сети
@@ -132,7 +132,7 @@ public:
    *
    * @param file_name
    */
-  void setConfigFileName(String file_name);
+  void setConfigFileName(String &file_name);
 
   /**
    * @brief включить/отключить комбинированный режим (AP + STA)
@@ -184,7 +184,7 @@ public:
    * @param ssid имя сети (SSID)
    * @param pass пароль для подключения к сети
    */
-  void setStaSsidData(String ssid, String pass);
+  void setStaSsidData(String &ssid, String &pass);
 
   /**
    * @brief установить данные точки доступа, которую будет создавать модуль
@@ -192,7 +192,7 @@ public:
    * @param ssid имя точки доступа (SSID)
    * @param pass пароль для подключения к точке доступа
    */
-  void setApSsidData(String ssid, String pass);
+  void setApSsidData(String &ssid, String &pass);
 
   /**
    * @brief установить логин и пароль для доступа к Web-тнтерфейсу модуля
@@ -200,7 +200,7 @@ public:
    * @param name логин
    * @param pass пароль
    */
-  void setAdminData(String name, String pass);
+  void setAdminData(String &name, String &pass);
 
   /**
    * @brief получение текущего интервала проверки состояния соединения
@@ -381,7 +381,7 @@ public:
    *
    * @param ip IP-адрес точки доступа; адрес шлюза будет установлен такой же, маска сети 255.255.255.0
    */
-  void setApConfig(IPAddress ip);
+  void setApConfig(IPAddress &ip);
 
   /**
    * @brief установить параметры точки доступа, создаваемой модулем
@@ -405,7 +405,7 @@ public:
    * @param gateway адрес шлюза
    * @param mask маска сети
    */
-  void setStaConfig(IPAddress ip, IPAddress gateway, IPAddress mask);
+  void setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &mask);
 
 #if defined(ARDUINO_ARCH_ESP32)
   /**
@@ -415,7 +415,7 @@ public:
    * @param _file_system ссылка на экземпляр файловой системы модуля для сохранения файла с настройками
    * @param _config_page адрес страницы Web-интерфейса модуля
    */
-  void begin(WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
+  void begin(WebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
 #else
   /**
    * @brief инициализация модуля
@@ -424,7 +424,7 @@ public:
    * @param _file_system ссылка на экземпляр файловой системы модуля для сохранения файла с настройками
    * @param _config_page адрес страницы Web-интерфейса модуля
    */
-  void begin(ESP8266WebServer *_server, FS *_file_system, String _config_page = "/wifi_config");
+  void begin(ESP8266WebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
 #endif
 
   /**
@@ -479,7 +479,7 @@ public:
    * @return true
    * @return false
    */
-  bool startSoftAP(String ssid, String pass);
+  bool startSoftAP(String &ssid, String &pass);
 
   /**
    * @brief подключение к WiFi-сети, сохраненной в настройках
@@ -497,7 +497,7 @@ public:
    * @return true
    * @return false
    */
-  bool startSTA(String ssid, String pass);
+  bool startSTA(String &ssid, String &pass);
 
   /**
    * @brief поиск WiF-сети сохраненной в настройках
@@ -514,7 +514,7 @@ public:
    * @return true
    * @return false
    */
-  bool findAp(String ssid);
+  bool findAp(String &ssid);
 
   /**
    * @brief проверка состояния соединения

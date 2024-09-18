@@ -37,12 +37,16 @@ static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
 
 static bool find_ap(String ssid);
 static void set_cur_mode(WiFiMode_t _mode);
-static void set_sta_config(IPAddress ip, IPAddress gateway, IPAddress mask);
-static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask);
+static void set_sta_config(const IPAddress &ip,
+                           const IPAddress &gateway,
+                           const IPAddress &mask);
+static void set_ap_config(const IPAddress &ip,
+                          const IPAddress &gateway,
+                          const IPAddress &mask);
 static bool start_wifi();
 static void stop_wifi();
-static bool start_sta(String ssid, String pass, bool search_ssid = true);
-static bool start_ap(String ssid, String pass, bool combo_mode = false);
+static bool start_sta(String &ssid, String &pass, bool search_ssid = true);
+static bool start_ap(String &ssid, String &pass, bool combo_mode = false);
 
 // ==== настройки WiFi ===============================
 
@@ -114,7 +118,7 @@ shWiFiConfig::shWiFiConfig()
   set_config();
 }
 
-shWiFiConfig::shWiFiConfig(String adm_name, String adm_pass)
+shWiFiConfig::shWiFiConfig(String &adm_name, String &adm_pass)
 {
   set_config();
   setAdminData(adm_name, adm_pass);
@@ -128,29 +132,29 @@ void shWiFiConfig::setLogOnState(bool log_on, Print *_serial)
   serial = (logOnState) ? _serial : NULL;
 }
 
-void shWiFiConfig::setApSsid(String ap_ssid) { apSsid = ap_ssid; }
+void shWiFiConfig::setApSsid(String &ap_ssid) { apSsid = ap_ssid; }
 
-void shWiFiConfig::setApPass(String ap_pass) { apPass = ap_pass; }
+void shWiFiConfig::setApPass(String &ap_pass) { apPass = ap_pass; }
 
-void shWiFiConfig::setApIP(IPAddress ap_ip) { apIP = ap_ip; }
+void shWiFiConfig::setApIP(IPAddress &ap_ip) { apIP = ap_ip; }
 
-void shWiFiConfig::setApGateway(IPAddress ap_gateway) { apGateway = ap_gateway; };
+void shWiFiConfig::setApGateway(IPAddress &ap_gateway) { apGateway = ap_gateway; };
 
-void shWiFiConfig::setApMask(IPAddress ap_mask) { apMask = ap_mask; }
+void shWiFiConfig::setApMask(IPAddress &ap_mask) { apMask = ap_mask; }
 
-void shWiFiConfig::setStaSsid(String sta_ssid) { staSsid = sta_ssid; }
+void shWiFiConfig::setStaSsid(String &sta_ssid) { staSsid = sta_ssid; }
 
-void shWiFiConfig::setStaPass(String sta_pass) { staPass = sta_pass; }
+void shWiFiConfig::setStaPass(String &sta_pass) { staPass = sta_pass; }
 
-void shWiFiConfig::setStaIP(IPAddress sta_ip) { staIP = sta_ip; }
+void shWiFiConfig::setStaIP(IPAddress &sta_ip) { staIP = sta_ip; }
 
-void shWiFiConfig::setStaGateway(IPAddress sta_gateway) { staGateway = sta_gateway; }
+void shWiFiConfig::setStaGateway(IPAddress &sta_gateway) { staGateway = sta_gateway; }
 
-void shWiFiConfig::setStaMask(IPAddress sta_mask) { staMask = sta_mask; }
+void shWiFiConfig::setStaMask(IPAddress &sta_mask) { staMask = sta_mask; }
 
 void shWiFiConfig::setStaticIpMode(bool static_ip) { staticIP = static_ip; }
 
-void shWiFiConfig::setConfigFileName(String file_name) { fileName = file_name; }
+void shWiFiConfig::setConfigFileName(String &file_name) { fileName = file_name; }
 
 void shWiFiConfig::setApStaMode(bool mode_on) { ap_sta_mode = mode_on; }
 
@@ -181,19 +185,19 @@ void shWiFiConfig::setLedPwmLevels(int16_t _max, int16_t _min)
   led.setLevelsForPWM(_max, _min);
 }
 
-void shWiFiConfig::setStaSsidData(String ssid, String pass)
+void shWiFiConfig::setStaSsidData(String &ssid, String &pass)
 {
   staSsid = ssid;
   staPass = pass;
 }
 
-void shWiFiConfig::setApSsidData(String ssid, String pass)
+void shWiFiConfig::setApSsidData(String &ssid, String &pass)
 {
   apSsid = ssid;
   apPass = pass;
 }
 
-void shWiFiConfig::setAdminData(String name, String pass)
+void shWiFiConfig::setAdminData(String &name, String &pass)
 {
   if (name != emptyString && pass != emptyString)
   {
@@ -254,7 +258,7 @@ void shWiFiConfig::setApConfig()
   set_ap_config(apIP, apGateway, apMask);
 }
 
-void shWiFiConfig::setApConfig(IPAddress ip)
+void shWiFiConfig::setApConfig(IPAddress &ip)
 {
   set_ap_config(ip, ip, (IPAddress(255, 255, 255, 0)));
 }
@@ -269,15 +273,15 @@ void shWiFiConfig::setStaConfig()
   set_sta_config(staIP, staGateway, staMask);
 }
 
-void shWiFiConfig::setStaConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
+void shWiFiConfig::setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &mask)
 {
   set_sta_config(ip, gateway, mask);
 }
 
 #if defined(ARDUINO_ARCH_ESP32)
-void shWiFiConfig::begin(WebServer *_server, FS *_file_system, String _config_page)
+void shWiFiConfig::begin(WebServer *_server, FS *_file_system, const String &_config_page)
 #else
-void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, String _config_page)
+void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, const String &_config_page)
 #endif
 {
   WiFi.mode(curMode);
@@ -333,7 +337,7 @@ bool shWiFiConfig::startSoftAP()
   return (start_ap(apSsid, apPass));
 }
 
-bool shWiFiConfig::startSoftAP(String ssid, String pass)
+bool shWiFiConfig::startSoftAP(String &ssid, String &pass)
 {
   return (start_ap(ssid, pass));
 }
@@ -343,7 +347,7 @@ bool shWiFiConfig::startSTA()
   return (start_sta(staSsid, staPass));
 }
 
-bool shWiFiConfig::startSTA(String ssid, String pass)
+bool shWiFiConfig::startSTA(String &ssid, String &pass)
 {
   return (start_sta(ssid, pass));
 }
@@ -353,7 +357,7 @@ bool shWiFiConfig::findSavedAp()
   return (find_ap(staSsid));
 }
 
-bool shWiFiConfig::findAp(String ssid)
+bool shWiFiConfig::findAp(String &ssid)
 {
   return (find_ap(ssid));
 }
@@ -735,12 +739,16 @@ static void set_cur_mode(WiFiMode_t _mode)
   WiFi.mode(_mode);
 }
 
-static void set_sta_config(IPAddress ip, IPAddress gateway, IPAddress mask)
+static void set_sta_config(const IPAddress &ip,
+                           const IPAddress &gateway,
+                           const IPAddress &mask)
 {
   WiFi.config(ip, gateway, mask);
 }
 
-static void set_ap_config(IPAddress ip, IPAddress gateway, IPAddress mask)
+static void set_ap_config(const IPAddress &ip,
+                          const IPAddress &gateway,
+                          const IPAddress &mask)
 {
   WiFi.softAPConfig(ip, gateway, mask);
 }
@@ -770,7 +778,7 @@ static void stop_wifi()
   set_cur_mode(WIFI_OFF);
 }
 
-static bool start_sta(String ssid, String pass, bool search_ssid)
+static bool start_sta(String &ssid, String &pass, bool search_ssid)
 {
   bool result = false;
 
@@ -831,7 +839,7 @@ static bool start_sta(String ssid, String pass, bool search_ssid)
   return (result);
 }
 
-static bool start_ap(String ssid, String pass, bool combo_mode)
+static bool start_ap(String &ssid, String &pass, bool combo_mode)
 {
   bool result = false;
   WFC_PRINT(F("Create WiFi access point "));
