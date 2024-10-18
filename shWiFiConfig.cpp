@@ -9,17 +9,13 @@
   if (logOnState && serial) \
   serial->println(x)
 
-#if defined(ARDUINO_ARCH_ESP32)
-static WebServer *http_server = NULL;
-#else
-static ESP8266WebServer *http_server = NULL;
-#endif
+static shWebServer *http_server = NULL;
 
 static LedState led;
 
 static FS *file_system = NULL;
 
-static const int confSize = 1024;
+static const int CONFIG_SIZE = 1024;
 
 static const char TEXT_PLAIN[] PROGMEM = "text/plain";
 static const char TEXT_HTML[] PROGMEM = "text/html";
@@ -32,8 +28,8 @@ static void handleGetApList();
 
 static bool save_config();
 static bool load_config();
-static void readJsonSetting(StaticJsonDocument<confSize> &doc);
-static void writeSettingInJson(StaticJsonDocument<confSize> &doc);
+static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc);
+static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc);
 
 static bool find_ap(String ssid);
 static void set_cur_mode(WiFiMode_t _mode);
@@ -278,11 +274,7 @@ void shWiFiConfig::setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &ma
   set_sta_config(ip, gateway, mask);
 }
 
-#if defined(ARDUINO_ARCH_ESP32)
-void shWiFiConfig::begin(WebServer *_server, FS *_file_system, const String &_config_page)
-#else
-void shWiFiConfig::begin(ESP8266WebServer *_server, FS *_file_system, const String &_config_page)
-#endif
+void shWiFiConfig::begin(shWebServer *_server, FS *_file_system, const String &_config_page)
 {
   WiFi.mode(curMode);
 
@@ -417,7 +409,7 @@ static void handleGetConfigPage()
 
 static void handleReadSetting()
 {
-  StaticJsonDocument<confSize> doc;
+  StaticJsonDocument<CONFIG_SIZE> doc;
 
   writeSettingInJson(doc);
   doc[use_combo_mode_str] = (byte)useComboMode;
@@ -440,7 +432,7 @@ static void handleWriteSetting()
 
   String json = http_server->arg("plain");
 
-  StaticJsonDocument<confSize> doc;
+  StaticJsonDocument<CONFIG_SIZE> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, json);
@@ -568,7 +560,7 @@ static bool save_config()
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
   // Use https://arduinojson.org/assistant to compute the capacity.
-  StaticJsonDocument<confSize> doc;
+  StaticJsonDocument<CONFIG_SIZE> doc;
 
   // задать данные для сохранения
   writeSettingInJson(doc);
@@ -610,14 +602,14 @@ static bool load_config()
 
   // Проверяем размер файла, будем использовать файл размером меньше 1024 байта
   size_t size = configFile.size();
-  if (size > 1024)
+  if (size > CONFIG_SIZE)
   {
     WFC_PRINTLN(F("WiFi configuration file size is too large."));
     configFile.close();
     return (false);
   }
 
-  StaticJsonDocument<confSize> doc;
+  StaticJsonDocument<CONFIG_SIZE> doc;
 
   // Deserialize the JSON document
   DeserializationError error = deserializeJson(doc, configFile);
@@ -644,7 +636,7 @@ static bool load_config()
   return (result);
 }
 
-static void readJsonSetting(StaticJsonDocument<confSize> &doc)
+static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc)
 {
   String _str[] = {ap_ssid_str, ap_pass_str, ssid_str, pass_str, a_name_str, a_pass_str,
                    ap_ip_str, ap_gateway_str, ap_mask_str, ip_str, gateway_str, mask_str};
@@ -679,7 +671,7 @@ static void readJsonSetting(StaticJsonDocument<confSize> &doc)
   }
 }
 
-static void writeSettingInJson(StaticJsonDocument<confSize> &doc)
+static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc)
 {
   doc[ap_ssid_str] = apSsid;
   doc[ap_pass_str] = apPass;

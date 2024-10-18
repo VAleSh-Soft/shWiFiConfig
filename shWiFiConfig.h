@@ -14,6 +14,13 @@
 #include <ArduinoJson.h>
 #include <Ticker.h>
 
+
+#if defined(ARDUINO_ARCH_ESP32)
+typedef WebServer shWebServer;
+#else
+typedef ESP8266WebServer shWebServer;
+#endif
+
 // ==== shWiFiConfig class ===========================
 class shWiFiConfig
 {
@@ -407,25 +414,14 @@ public:
    */
   void setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &mask);
 
-#if defined(ARDUINO_ARCH_ESP32)
   /**
    * @brief инициализация модуля
    *
-   * @param _server ссылка на экземпляр Web-сервера (WebServer), с которым будет работать конфиг
+   * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг
    * @param _file_system ссылка на экземпляр файловой системы модуля для сохранения файла с настройками
    * @param _config_page адрес страницы Web-интерфейса модуля
    */
-  void begin(WebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
-#else
-  /**
-   * @brief инициализация модуля
-   *
-   * @param _server ссылка на экземпляр Web-сервера (ESP8266WebServer), с которым будет работать конфиг
-   * @param _file_system ссылка на экземпляр файловой системы модуля для сохранения файла с настройками
-   * @param _config_page адрес страницы Web-интерфейса модуля
-   */
-  void begin(ESP8266WebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
-#endif
+  void begin(shWebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
 
   /**
    * @brief обработка событий модуля
