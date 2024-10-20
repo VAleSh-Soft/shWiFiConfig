@@ -2,8 +2,6 @@
 
 #include <EEPROM.h>
 
-#define EEPROM_INDEX_FOR_WRITE 0
-
 uint16_t EEPROM_SIZE = 1026;
 
 void start_eeprom(uint16_t size)
