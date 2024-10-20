@@ -1,5 +1,6 @@
 #include "shWiFiConfig.h"
 #include "extras/c_page.h"
+#include "_eeprom.h"
 #include <Arduino.h>
 
 #define WFC_PRINT(x)        \
@@ -16,6 +17,8 @@ static LedState led;
 static FS *file_system = NULL;
 
 static const int CONFIG_SIZE = 1024;
+
+static bool use_eeprom = false;
 
 static const char TEXT_PLAIN[] PROGMEM = "text/plain";
 static const char TEXT_HTML[] PROGMEM = "text/html";
@@ -274,12 +277,11 @@ void shWiFiConfig::setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &ma
   set_sta_config(ip, gateway, mask);
 }
 
-void shWiFiConfig::begin(shWebServer *_server, FS *_file_system, const String &_config_page)
+static void _begin(shWebServer *_server, const String &_config_page = "/wifi_config")
 {
   WiFi.mode(curMode);
 
   http_server = _server;
-  file_system = _file_system;
 
   // вызов страницы настройки WiFi
   http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
@@ -289,6 +291,23 @@ void shWiFiConfig::begin(shWebServer *_server, FS *_file_system, const String &_
   http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
   // получение списка доступных точек доступа
   http_server->on("/wifi_getaplist", HTTP_GET, handleGetApList);
+}
+
+void shWiFiConfig::begin(shWebServer *_server, FS *_file_system, const String &_config_page)
+{
+  file_system = _file_system;
+  use_eeprom = false;
+
+  _begin(_server, _config_page);
+}
+
+void shWiFiConfig::begin(shWebServer *_server, const String &_config_page)
+{
+  file_system = NULL;
+  use_eeprom = true;
+  start_eeprom(CONFIG_SIZE);
+
+  _begin(_server, _config_page);
 }
 
 void shWiFiConfig::tick()
@@ -537,7 +556,22 @@ static void handleShowSavePage()
 
 // ===================================================
 
-static bool save_config()
+static bool save_config_to_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc)
+{
+  WFC_PRINT(F("Save WiFi settings to EEPROM"));
+
+  bool result = false;
+  uint16_t size = measureJson(doc);
+
+  char *str;
+  result = serializeJson(doc, str, size + 1);
+  write_string_to_eeprom(str, EEPROM_INDEX_FOR_WRITE);
+  free(str);
+
+  return (result);
+}
+
+static bool save_config_to_file(StaticJsonDocument<CONFIG_SIZE> &doc)
 {
   File configFile;
 
@@ -556,6 +590,16 @@ static bool save_config()
     WFC_PRINTLN(F("Failed to create WiFi configuration file"));
     return (result);
   }
+  // сериализовать JSON-файл
+  result = serializeJson(doc, configFile);
+  configFile.close();
+
+  return result;
+}
+
+static bool save_config()
+{
+  bool result = false;
 
   // Allocate a temporary JsonDocument
   // Don't forget to change the capacity to match your requirements.
@@ -565,8 +609,8 @@ static bool save_config()
   // задать данные для сохранения
   writeSettingInJson(doc);
 
-  // сериализовать JSON-файл
-  result = serializeJson(doc, configFile);
+  result = (use_eeprom) ? save_config_to_eeprom(doc)
+                        : save_config_to_file(doc);
 
   if (result)
   {
@@ -574,16 +618,27 @@ static bool save_config()
   }
   else
   {
-    WFC_PRINTLN(F("Failed to write WiFi configuration file"));
+    WFC_PRINTLN(F("Failed to write WiFi configuration"));
   }
 
-  configFile.close();
   return (result);
 }
 
-static bool load_config()
+static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
+                             DeserializationError &error)
 {
+  WFC_PRINT(F("Load WiFi settings from EEPROM"));
 
+  char *str = read_string_from_eeprom(EEPROM_INDEX_FOR_WRITE);
+  error = deserializeJson(doc, str);
+  free(str);
+
+  return (true);
+}
+
+static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
+                           DeserializationError &error)
+{
   WFC_PRINT(F("Load WiFi settings from file "));
   WFC_PRINTLN(fileName);
 
@@ -608,18 +663,40 @@ static bool load_config()
     configFile.close();
     return (false);
   }
+  // Deserialize the JSON document
+  error = deserializeJson(doc, configFile);
+  configFile.close();
+
+  return (true);
+}
+
+static bool load_config()
+{
+  bool result = false;
 
   StaticJsonDocument<CONFIG_SIZE> doc;
+  DeserializationError error;
 
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, configFile);
-  configFile.close();
+  if (use_eeprom)
+  {
+    if (!load_from_eeprom(doc, error))
+    {
+      return false;
+    }
+  }
+  else
+  {
+    if (!load_from_file(doc, error))
+    {
+      return false;
+    }
+  }
 
   if (error)
   {
     WFC_PRINT("Data serialization error: ");
     WFC_PRINTLN(error.f_str());
-    WFC_PRINTLN(F("Failed to read WiFi config file, default config is used"));
+    WFC_PRINTLN(F("Failed to read WiFi config, default config is used"));
     result = false;
   }
   else

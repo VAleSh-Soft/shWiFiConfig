@@ -415,13 +415,21 @@ public:
   void setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &mask);
 
   /**
-   * @brief инициализация модуля
+   * @brief инициализация модуля с сохранением настроек в файловой системе
    *
    * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг
    * @param _file_system ссылка на экземпляр файловой системы модуля для сохранения файла с настройками
    * @param _config_page адрес страницы Web-интерфейса модуля
    */
   void begin(shWebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
+
+/**
+ * @brief инициализация модуля с сохранением настроек в EEPROM
+ * 
+ * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг 
+ * @param _config_page адрес страницы Web-интерфейса модуля
+ */
+  void begin(shWebServer *_server, const String &_config_page = "/wifi_config");
 
   /**
    * @brief обработка событий модуля
