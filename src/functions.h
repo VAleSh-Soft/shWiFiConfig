@@ -85,8 +85,20 @@ static void handleReadSetting();
 static void handleWriteSetting();
 static void handleGetApList();
 
+static void set_config();
+static void _begin(shWebServer *_server,
+                   const String &_config_page = "/wifi_config");
+
+static bool save_config_to_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc);
+static bool save_config_to_file(StaticJsonDocument<CONFIG_SIZE> &doc);
 static bool save_config();
+
+static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
+                             DeserializationError &error);
+static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
+                           DeserializationError &error);
 static bool load_config();
+
 static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc);
 static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc);
 
@@ -115,7 +127,7 @@ static void set_config()
   }
 }
 
-static void _begin(shWebServer *_server, const String &_config_page = "/wifi_config")
+static void _begin(shWebServer *_server, const String &_config_page)
 {
   WiFi.mode(curMode);
 
@@ -164,7 +176,7 @@ static void handleWriteSetting()
   if (http_server->hasArg("plain") == false)
   {
     http_server->send(200, FPSTR(TEXT_PLAIN), F("Body not received"));
-    WFC_PRINTLN(F("Failed to save configuration data, no data"));
+    WFC_PRINTLN(F("Failed to save configuration data, data not found"));
     return;
   }
 
@@ -280,10 +292,10 @@ static bool save_config_to_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc)
   WFC_PRINTLN(F("Save WiFi settings to EEPROM"));
 
   bool result = false;
-  uint16_t size = measureJson(doc);
+  uint16_t size = measureJson(doc) + 1; // вычисляем размер JSON-строки плюс нулевой символ
 
-  char *str = (char *)malloc(size);
-  result = serializeJson(doc, str, size + 1);
+  char *str = (char *)calloc(size, sizeof(char));
+  result = serializeJson(doc, str, size);
   write_string_to_eeprom(str, EEPROM_INDEX_FOR_WRITE);
   free(str);
 
