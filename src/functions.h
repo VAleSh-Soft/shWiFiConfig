@@ -2,6 +2,8 @@
 
 #include "_eeprom.h"
 
+// ===================================================
+
 #define WFC_PRINT(x)        \
   if (logOnState && serial) \
   serial->print(x)
@@ -10,6 +12,8 @@
   serial->println(x)
 
 #define EEPROM_INDEX_FOR_WRITE 0
+
+// ===================================================
 
 static LedState led;
 
@@ -20,6 +24,11 @@ static FS *file_system = NULL;
 static const int CONFIG_SIZE = 1024;
 
 static bool use_eeprom = false;
+
+static bool use_cript = false;
+static const char CRYPT_KEY_DEFAULT[] PROGMEM =
+    "ZnPjDMpsdM!PQn9,AqQP2CiHxFPmj*P2;oYECpb.;q|>jR:bKpc-d+,_HSoz|-<q";
+static String crypt_key;
 
 static const char TEXT_PLAIN[] PROGMEM = "text/plain";
 static const char TEXT_HTML[] PROGMEM = "text/html";
@@ -98,6 +107,8 @@ static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
 static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
                            DeserializationError &error);
 static bool load_config();
+
+static void set_crypt_state(bool _state, String crypt_key = "");
 
 static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc);
 static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc);
@@ -442,6 +453,21 @@ static bool load_config()
   }
 
   return (result);
+}
+
+static void set_crypt_state(bool _state, String _crypt_key)
+{
+  use_cript = _state;
+  if (_state)
+  {
+    WFC_PRINTLN(F("Encryption data enabled"));
+
+    crypt_key = (_crypt_key.isEmpty()) ? FPSTR(CRYPT_KEY_DEFAULT) : _crypt_key;
+  }
+  else
+  {
+    crypt_key = "";
+  }
 }
 
 static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc)

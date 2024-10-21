@@ -57,6 +57,14 @@ public:
    */
   void setLogOnState(bool log_on, Print *_serial = &Serial);
 
+/**
+ * @brief включение/отключение шифрования паролей
+ * 
+ * @param _state true - включено; false - выключено
+ * @param _crypt_key ключ для шифрования паролей; если оставить пустым, будет использоваться пароль по умолчанию
+ */
+  void setCryptState(bool _state, String _crypt_key = "");
+
   /**
    * @brief установить имя точки доступа, создаваемой модулем
    *

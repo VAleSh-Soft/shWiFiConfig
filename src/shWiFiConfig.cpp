@@ -24,6 +24,11 @@ void shWiFiConfig::setLogOnState(bool log_on, Print *_serial)
   serial = (logOnState) ? _serial : NULL;
 }
 
+void shWiFiConfig::setCryptState(bool _state, String _crypt_key)
+{
+  set_crypt_state(_state, _crypt_key);
+}
+
 void shWiFiConfig::setApSsid(String &ap_ssid) { apSsid = ap_ssid; }
 
 void shWiFiConfig::setApPass(String &ap_pass) { apPass = ap_pass; }
