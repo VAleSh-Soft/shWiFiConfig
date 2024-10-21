@@ -277,12 +277,12 @@ static void handleShowSavePage()
 
 static bool save_config_to_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc)
 {
-  WFC_PRINT(F("Save WiFi settings to EEPROM"));
+  WFC_PRINTLN(F("Save WiFi settings to EEPROM"));
 
   bool result = false;
   uint16_t size = measureJson(doc);
 
-  char *str;
+  char *str = (char *)malloc(size);
   result = serializeJson(doc, str, size + 1);
   write_string_to_eeprom(str, EEPROM_INDEX_FOR_WRITE);
   free(str);
@@ -346,7 +346,7 @@ static bool save_config()
 static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
                              DeserializationError &error)
 {
-  WFC_PRINT(F("Load WiFi settings from EEPROM"));
+  WFC_PRINTLN(F("Load WiFi settings from EEPROM"));
 
   char *str = read_string_from_eeprom(EEPROM_INDEX_FOR_WRITE);
   error = deserializeJson(doc, str);
@@ -370,7 +370,6 @@ static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
   if (!result)
   {
     WFC_PRINTLN(F("WiFi config file not found, default config used."));
-    save_config();
     return (result);
   }
 
@@ -416,13 +415,14 @@ static bool load_config()
     WFC_PRINT("Data serialization error: ");
     WFC_PRINTLN(error.f_str());
     WFC_PRINTLN(F("Failed to read WiFi config, default config is used"));
-    result = false;
+    save_config();
   }
   else
   // Теперь можно получить значения из doc
   {
     readJsonSetting(doc);
   }
+  result = !error;
 
   if (result)
   {
