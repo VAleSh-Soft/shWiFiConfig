@@ -1,6 +1,7 @@
 #pragma once
 
 #include "_eeprom.h"
+#include "_crypt.h"
 
 // ===================================================
 
@@ -24,11 +25,6 @@ static FS *file_system = NULL;
 static const int CONFIG_SIZE = 1024;
 
 static bool use_eeprom = false;
-
-static bool use_cript = false;
-static const char CRYPT_KEY_DEFAULT[] PROGMEM =
-    "ZnPjDMpsdM!PQn9,AqQP2CiHxFPmj*P2;oYECpb.;q|>jR:bKpc-d+,_HSoz|-<q";
-static String crypt_key;
 
 static const char TEXT_PLAIN[] PROGMEM = "text/plain";
 static const char TEXT_HTML[] PROGMEM = "text/html";
@@ -54,8 +50,8 @@ static bool ap_sta_mode = false;
 static bool useComboMode = false;
 // ==== Other ===================================
 static bool useAdmPass = false;
-static String admName = "";
-static String admPass = "";
+static String admName = "admin";
+static String admPass = "admin";
 static bool useLed = true;
 static bool ledOn = true;
 static int8_t ledPin = -1;
@@ -86,6 +82,7 @@ static const String a_name_str = "a_name";
 static const String a_pass_str = "a_pass";
 static const String use_led_str = "use_led";
 static const String led_on_off = "led_on";
+static const String crypt_on_off = "crypt";
 
 // ===================================================
 
@@ -108,10 +105,12 @@ static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
                            DeserializationError &error);
 static bool load_config();
 
-static void set_crypt_state(bool _state, String crypt_key = "");
+static void set_crypt_state(bool _state, String _crypt_key = "");
 
-static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc);
-static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc);
+static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
+                            bool toReWrite = false);
+static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc,
+                               bool to_crypt = false);
 
 static bool find_ap(String ssid);
 static void set_cur_mode(WiFiMode_t _mode);
@@ -240,7 +239,6 @@ static void handleWriteSetting()
     {
       reconnect = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
     }
-
     readJsonSetting(doc);
     save_config();
     const String successResponse0 =
@@ -306,9 +304,12 @@ static bool save_config_to_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc)
   uint16_t size = measureJson(doc) + 1; // вычисляем размер JSON-строки плюс нулевой символ
 
   char *str = (char *)calloc(size, sizeof(char));
-  result = serializeJson(doc, str, size);
-  write_string_to_eeprom(str, EEPROM_INDEX_FOR_WRITE);
-  free(str);
+  if (str)
+  {
+    result = serializeJson(doc, str, size);
+    write_string_to_eeprom(str, EEPROM_INDEX_FOR_WRITE);
+    free(str);
+  }
 
   return (result);
 }
@@ -322,8 +323,8 @@ static bool save_config_to_file(StaticJsonDocument<CONFIG_SIZE> &doc)
 
   bool result = false;
 
-  // удалить существующий файл, иначе конфигурация будет добавлена ​​к файлу
-  file_system->remove(fileName);
+  //   // удалить существующий файл, иначе конфигурация будет добавлена ​​к файлу
+  //   file_system->remove(fileName);
 
   // Открыть файл для записи
   configFile = file_system->open(fileName, "w");
@@ -349,7 +350,7 @@ static bool save_config()
   StaticJsonDocument<CONFIG_SIZE> doc;
 
   // задать данные для сохранения
-  writeSettingInJson(doc);
+  writeSettingInJson(doc, crypt_data.getCryptState());
 
   result = (use_eeprom) ? save_config_to_eeprom(doc)
                         : save_config_to_file(doc);
@@ -371,9 +372,19 @@ static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
 {
   WFC_PRINTLN(F("Load WiFi settings from EEPROM"));
 
+  uint16_t len = get_json_size(EEPROM_INDEX_FOR_WRITE);
+  if (len > CONFIG_SIZE || len == 0)
+  {
+    WFC_PRINTLN(F("WiFi config not found, default config used."));
+    return (false);
+  }
+
   char *str = read_string_from_eeprom(EEPROM_INDEX_FOR_WRITE);
-  error = deserializeJson(doc, str);
-  free(str);
+  if (str)
+  {
+    error = deserializeJson(doc, str);
+    free(str);
+  }
 
   return (true);
 }
@@ -418,38 +429,33 @@ static bool load_config()
   StaticJsonDocument<CONFIG_SIZE> doc;
   DeserializationError error;
 
-  if (use_eeprom)
-  {
-    if (!load_from_eeprom(doc, error))
-    {
-      return false;
-    }
-  }
-  else
-  {
-    if (!load_from_file(doc, error))
-    {
-      return false;
-    }
-  }
+  result = (use_eeprom) ? load_from_eeprom(doc, error)
+                        : load_from_file(doc, error);
 
-  if (error)
+  if (!result)
   {
-    WFC_PRINT("Data serialization error: ");
-    WFC_PRINTLN(error.f_str());
-    WFC_PRINTLN(F("Failed to read WiFi config, default config is used"));
     save_config();
   }
   else
-  // Теперь можно получить значения из doc
   {
-    readJsonSetting(doc);
-  }
-  result = !error;
+    if (error)
+    {
+      WFC_PRINT("Data serialization error: ");
+      WFC_PRINTLN(error.f_str());
+      WFC_PRINTLN(F("Failed to read WiFi config, default config is used"));
+      save_config();
+    }
+    else
+    // Теперь можно получить значения из doc
+    {
+      readJsonSetting(doc, true);
+    }
+    result = !error;
 
-  if (result)
-  {
-    WFC_PRINTLN(F("OK"));
+    if (result)
+    {
+      WFC_PRINTLN(F("OK"));
+    }
   }
 
   return (result);
@@ -457,24 +463,32 @@ static bool load_config()
 
 static void set_crypt_state(bool _state, String _crypt_key)
 {
-  use_cript = _state;
+  crypt_data.setCryptState(_state);
   if (_state)
   {
     WFC_PRINTLN(F("Encryption data enabled"));
 
-    crypt_key = (_crypt_key.isEmpty()) ? FPSTR(CRYPT_KEY_DEFAULT) : _crypt_key;
-  }
-  else
-  {
-    crypt_key = "";
+    if (_crypt_key == "")
+    {
+      WFC_PRINTLN(F("The encryption key has not been specified. The default 64-bit key will be used"));
+    }
+    else if (_crypt_key.length() >= 10)
+    {
+      crypt_data.setCryptKey(_crypt_key);
+    }
+    else
+    {
+      WFC_PRINTLN(F("The encryption key is too short. The default 64-bit key will be used"));
+    }
   }
 }
 
-static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc)
+static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
+                            bool toReWrite)
 {
-  String _str[] = {ap_ssid_str, ap_pass_str, ssid_str, pass_str, a_name_str, a_pass_str,
+  String _str[] = {ap_ssid_str, ap_pass_str, pass_str, a_name_str, a_pass_str, ssid_str,
                    ap_ip_str, ap_gateway_str, ap_mask_str, ip_str, gateway_str, mask_str};
-  String *str_val[] = {&apSsid, &apPass, &staSsid, &staPass, &admName, &admPass};
+  String *str_val[] = {&apSsid, &apPass, &staPass, &admName, &admPass, &staSsid};
 
   IPAddress *ip_val[] = {&apIP, &apGateway, &apMask, &staIP, &staGateway, &staMask};
 
@@ -483,6 +497,7 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc)
   useAdmPass = doc[use_adm_pass_str].as<bool>();
   ledOn = doc[led_on_off].as<bool>();
   led.setUseLed(ledOn);
+  bool crpt = doc[crypt_on_off].as<bool>();
 
   for (byte i = 0; i < 6; i++)
   {
@@ -490,6 +505,11 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc)
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
     if (s != "null")
     {
+      if (crpt && i != 5)
+      {
+        s = crypt_data.encode(s, i);
+      }
+
       *str_val[i] = s;
     }
   }
@@ -503,26 +523,33 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc)
       *ip_val[i - 6] = ip;
     }
   }
+
+  // если флаг шифрования в прочитанных настройках не совпадает с установленным, то перезаписать настройки
+  if (crpt != crypt_data.getCryptState() && toReWrite)
+  {
+    save_config();
+  }
 }
 
-static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc)
+static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc, bool to_crypt)
 {
-  doc[ap_ssid_str] = apSsid;
-  doc[ap_pass_str] = apPass;
+  doc[ap_ssid_str] = (to_crypt) ? crypt_data.encode(apSsid, 0) : apSsid;
+  doc[ap_pass_str] = (to_crypt) ? crypt_data.encode(apPass, 1) : apPass;
   doc[ap_ip_str] = apIP.toString();
   doc[ap_gateway_str] = apGateway.toString();
   doc[ap_mask_str] = apMask.toString();
   doc[ssid_str] = staSsid;
-  doc[pass_str] = staPass;
+  doc[pass_str] = (to_crypt) ? crypt_data.encode(staPass, 2) : staPass;
   doc[static_ip_str] = (byte)staticIP;
   doc[ip_str] = staIP.toString();
   doc[gateway_str] = staGateway.toString();
   doc[mask_str] = staMask.toString();
   doc[ap_sta_mode_str] = (byte)ap_sta_mode;
   doc[use_adm_pass_str] = (byte)useAdmPass;
-  doc[a_name_str] = admName;
-  doc[a_pass_str] = admPass;
+  doc[a_name_str] = (to_crypt) ? crypt_data.encode(admName, 3) : admName;
+  doc[a_pass_str] = (to_crypt) ? crypt_data.encode(admPass, 4) : admPass;
   doc[led_on_off] = (byte)ledOn;
+  doc[crypt_on_off] = (byte)crypt_data.getCryptState();
 }
 
 // ===================================================
