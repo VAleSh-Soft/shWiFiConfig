@@ -29,6 +29,11 @@ void shWiFiConfig::setCryptState(bool _state, String _crypt_key)
   set_crypt_state(_state, _crypt_key);
 }
 
+void shWiFiConfig::setNoWiFiSleepMode(bool _flag)
+{
+  (_flag) ? WiFi.setSleep(WIFI_PS_NONE) : WiFi.setSleep(WIFI_PS_MIN_MODEM);
+}
+
 void shWiFiConfig::setApSsid(String &ap_ssid) { apSsid = ap_ssid; }
 
 void shWiFiConfig::setApPass(String &ap_pass) { apPass = ap_pass; }

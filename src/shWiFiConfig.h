@@ -65,6 +65,13 @@ public:
  */
   void setCryptState(bool _state, String _crypt_key = "");
 
+/**
+ * @brief отключение режима сна WiFi
+ * 
+ * @param _flag true - WiFi никогда не отключается, false - WiFi работает в режиме Modem-sleep
+ */
+  void setNoWiFiSleepMode(bool _flag = true);
+
   /**
    * @brief установить имя точки доступа, создаваемой модулем
    *

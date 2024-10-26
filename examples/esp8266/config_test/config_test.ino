@@ -52,7 +52,10 @@ void setup()
   Serial.begin(115200);
   Serial.println();
 
+  // ==== установим данные подключения по умолчанию ==
   wifi_config.setStaSsidData(ssid, pass);
+  // ==== отключаем спящий режим WiFi ================
+  // wifi_config.setNoWiFiSleepMode(); // раскомментируйте строку, если вам не нужен спящий режим WiFi
 
 #if defined(SAVE_CONFIG_TO_EEPROM)
   // инициируем конфигурацию с сохранением в EEPROM
@@ -70,7 +73,8 @@ void setup()
     wifi_config.loadConfig();
   }
 
-  //  wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
+  // ==== включаем возможность использования комбинированного режима
+  // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
   // ==== задаем использование светодиода ============
   wifi_config.setUseLed(true, LED_BUILTIN);
 

@@ -11,13 +11,13 @@
  *        Сохранение параметров возможно как в файловой системе модуля, так и в
  *        EEPROM. Для использования EEPROM раскомментируйте строку
  *        #define SAVE_CONFIG_TO_EEPROM
- *        
+ *
  *        При сохранении параметров в файловой системе необходимо выбрать тип
- *        файловой системы. Для этого в дефайне #define FILESYSTEM укажите FFat 
- *        или SPIFFS. При этом в настройках платы в Partition Scheme: нужно 
- *        выбрать соответственно либо 'Default 4MB with ffat', либо 
- *        'Default 4MB with SPIFFS' (если у вас плата с 4MB флеш-памяти), либо 
- *        другой соответствующий вариант в зависимости от количества 
+ *        файловой системы. Для этого в дефайне #define FILESYSTEM укажите FFat
+ *        или SPIFFS. При этом в настройках платы в Partition Scheme: нужно
+ *        выбрать соответственно либо 'Default 4MB with ffat', либо
+ *        'Default 4MB with SPIFFS' (если у вас плата с 4MB флеш-памяти), либо
+ *        другой соответствующий вариант в зависимости от количества
  *        флеш-памяти вашей платы.
  *
  *        В примере так же показано использование шифрования паролей при
@@ -62,7 +62,10 @@ void setup()
   Serial.begin(115200);
   Serial.println();
 
+  // ==== установим данные подключения по умолчанию ==
   wifi_config.setStaSsidData(ssid, pass);
+  // ==== отключаем спящий режим WiFi ================
+  // wifi_config.setNoWiFiSleepMode(); // раскомментируйте строку, если вам не нужен спящий режим WiFi
 
 #if defined(SAVE_CONFIG_TO_EEPROM)
   // инициируем конфигурацию с сохранением в EEPROM
@@ -80,7 +83,8 @@ void setup()
     wifi_config.loadConfig();
   }
 
-  //  wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
+  // ==== включаем возможность использования комбинированного режима
+  // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
   // ==== задаем использование светодиода ============
   wifi_config.setUseLed(true, LED_BUILTIN);
 
@@ -95,7 +99,7 @@ void setup()
 
   Serial.println(F("Starting the web server"));
   Serial.println();
-  
+
   HTTP.begin();
 }
 
