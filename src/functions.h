@@ -253,7 +253,7 @@ static void handleWriteSetting()
     if (reconnect)
     {
       WFC_PRINTLN("");
-      WFC_PRINTLN(F("The module will be reconnected, wait..."));
+      WFC_PRINTLN(F("The module will be reconnected, wait.."));
       WFC_PRINTLN("");
       http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
       delay(100);
@@ -292,7 +292,7 @@ static void handleGetApList()
 static void handleShowSavePage()
 {
   const String successResponse =
-      F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings...");
+      F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings..");
   http_server->client().setNoDelay(true);
   http_server->send(200, FPSTR(TEXT_HTML), successResponse);
 }
@@ -378,7 +378,7 @@ static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
   uint16_t len = get_json_size(EEPROM_INDEX_FOR_WRITE);
   if (len > CONFIG_SIZE || len == 0)
   {
-    WFC_PRINTLN(F("WiFi config not found, default config used."));
+    WFC_PRINTLN(F("WiFi config not found, default config used"));
     return (false);
   }
 
@@ -406,7 +406,7 @@ static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
   // если файл конфигурации не найден, сохранить настройки по умолчанию
   if (!result)
   {
-    WFC_PRINTLN(F("WiFi config file not found, default config used."));
+    WFC_PRINTLN(F("WiFi config file not found, default config used"));
     return (result);
   }
 
@@ -414,7 +414,7 @@ static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
   size_t size = configFile.size();
   if (size > CONFIG_SIZE)
   {
-    WFC_PRINTLN(F("WiFi configuration file size is too large."));
+    WFC_PRINTLN(F("WiFi configuration file size is too large"));
     configFile.close();
     return (false);
   }
@@ -726,10 +726,10 @@ static bool start_ap(String &ssid, String &pass, bool combo_mode)
 
 static bool check_ssid_length(String &_ssid)
 {
-  bool result = _ssid.length() >= 8 && _ssid.length() <= 32;
+  bool result = _ssid != "" && _ssid.length() <= 32;
   if (!result)
   {
-    WFC_PRINTLN(F("Incorrect SSID length (8-32 characters)."));
+    WFC_PRINTLN(F("Incorrect SSID length (no more than 32 characters)"));
   }
   return (result);
 }
@@ -738,7 +738,7 @@ static bool check_pass_length(String &_pass)
   bool result = _pass.length() >= 8 && _pass.length() <= 64;
   if (!result)
   {
-    WFC_PRINTLN(F("Incorrect password length (8-64 characters)."));
+    WFC_PRINTLN(F("Incorrect password length (8-64 characters)"));
   }
   return (result);
 }

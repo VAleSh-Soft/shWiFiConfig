@@ -8,7 +8,7 @@
 #include <WebServer.h>
 // #include <user_interface.h>
 #else
-#error "The library is designed for use in the ESP8266 or ESP32 environment."
+#error "The library is designed for use in the ESP8266 or ESP32 environment"
 #endif
 #include <FS.h>
 #include <ArduinoJson.h>
