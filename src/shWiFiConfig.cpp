@@ -116,10 +116,10 @@ void shWiFiConfig::setStaSsidData(String &ssid, String &pass)
   if (check_ssid_length(ssid))
   {
     staSsid = ssid;
-  }
-  if (check_pass_length(pass))
-  {
-    staPass = pass;
+    if (check_pass_length(pass))
+    {
+      staPass = pass;
+    }
   }
 }
 
@@ -128,16 +128,16 @@ void shWiFiConfig::setApSsidData(String &ssid, String &pass)
   if (check_ssid_length(ssid))
   {
     apSsid = ssid;
-  }
-  if (check_pass_length(pass))
-  {
-    apPass = pass;
+    if (check_pass_length(pass))
+    {
+      apPass = pass;
+    }
   }
 }
 
 void shWiFiConfig::setAdminData(String &name, String &pass)
 {
-  if (name != emptyString && pass != emptyString)
+  if (name != "" && pass != "")
   {
     if (name.length() >= 5)
     {

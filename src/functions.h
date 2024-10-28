@@ -161,8 +161,8 @@ static void _begin(shWebServer *_server, const String &_config_page)
 static void handleGetConfigPage()
 {
   if (useAdmPass &&
-      admName != emptyString &&
-      admPass != emptyString &&
+      admName != "" &&
+      admPass != "" &&
       !http_server->authenticate(admName.c_str(), admPass.c_str()))
   {
     return http_server->requestAuthentication();
@@ -561,7 +561,7 @@ static bool find_ap(String ssid)
 {
   bool result = false;
 
-  if (staSsid != emptyString)
+  if (staSsid != "")
   {
     led.init(100, true);
     WFC_PRINT(F("Searche for access point "));
