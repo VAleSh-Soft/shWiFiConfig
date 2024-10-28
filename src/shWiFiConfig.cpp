@@ -34,9 +34,21 @@ void shWiFiConfig::setNoWiFiSleepMode(bool _flag)
   (_flag) ? WiFi.setSleep(WIFI_PS_NONE) : WiFi.setSleep(WIFI_PS_MIN_MODEM);
 }
 
-void shWiFiConfig::setApSsid(String &ap_ssid) { apSsid = ap_ssid; }
+void shWiFiConfig::setApSsid(String &ap_ssid)
+{
+  if (check_ssid_length(ap_ssid))
+  {
+    apSsid = ap_ssid;
+  }
+}
 
-void shWiFiConfig::setApPass(String &ap_pass) { apPass = ap_pass; }
+void shWiFiConfig::setApPass(String &ap_pass)
+{
+  if (check_pass_length(ap_pass))
+  {
+    apPass = ap_pass;
+  }
+}
 
 void shWiFiConfig::setApIP(IPAddress &ap_ip) { apIP = ap_ip; }
 
@@ -44,9 +56,21 @@ void shWiFiConfig::setApGateway(IPAddress &ap_gateway) { apGateway = ap_gateway;
 
 void shWiFiConfig::setApMask(IPAddress &ap_mask) { apMask = ap_mask; }
 
-void shWiFiConfig::setStaSsid(String &sta_ssid) { staSsid = sta_ssid; }
+void shWiFiConfig::setStaSsid(String &sta_ssid)
+{
+  if (check_ssid_length(sta_ssid))
+  {
+    staSsid = sta_ssid;
+  }
+}
 
-void shWiFiConfig::setStaPass(String &sta_pass) { staPass = sta_pass; }
+void shWiFiConfig::setStaPass(String &sta_pass)
+{
+  if (check_pass_length(sta_pass))
+  {
+    staPass = sta_pass;
+  }
+}
 
 void shWiFiConfig::setStaIP(IPAddress &sta_ip) { staIP = sta_ip; }
 
@@ -89,23 +113,45 @@ void shWiFiConfig::setLedPwmLevels(int16_t _max, int16_t _min)
 
 void shWiFiConfig::setStaSsidData(String &ssid, String &pass)
 {
-  staSsid = ssid;
-  staPass = pass;
+  if (check_ssid_length(ssid))
+  {
+    staSsid = ssid;
+  }
+  if (check_pass_length(pass))
+  {
+    staPass = pass;
+  }
 }
 
 void shWiFiConfig::setApSsidData(String &ssid, String &pass)
 {
-  apSsid = ssid;
-  apPass = pass;
+  if (check_ssid_length(ssid))
+  {
+    apSsid = ssid;
+  }
+  if (check_pass_length(pass))
+  {
+    apPass = pass;
+  }
 }
 
 void shWiFiConfig::setAdminData(String &name, String &pass)
 {
   if (name != emptyString && pass != emptyString)
   {
-    useAdmPass = true;
-    admName = name;
-    admPass = pass;
+    if (name.length() >= 5)
+    {
+      admName = name;
+      if (check_pass_length(pass))
+      {
+        admPass = pass;
+        useAdmPass = true;
+      }
+    }
+    else
+    {
+      WFC_PRINTLN(F("Admin name is too short (min 5 characters)"));
+    }
   }
 }
 

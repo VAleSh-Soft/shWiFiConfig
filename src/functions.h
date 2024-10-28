@@ -125,6 +125,9 @@ static void stop_wifi();
 static bool start_sta(String &ssid, String &pass, bool search_ssid = true);
 static bool start_ap(String &ssid, String &pass, bool combo_mode = false);
 
+static bool check_ssid_length(String &_ssid);
+static bool check_pass_length(String &_pass);
+
 // ===================================================
 
 static void set_config()
@@ -718,5 +721,24 @@ static bool start_ap(String &ssid, String &pass, bool combo_mode)
   }
   WFC_PRINTLN("");
 
+  return (result);
+}
+
+static bool check_ssid_length(String &_ssid)
+{
+  bool result = _ssid.length() >= 8 && _ssid.length() <= 32;
+  if (!result)
+  {
+    WFC_PRINTLN(F("Incorrect SSID length (8-32 characters)."));
+  }
+  return (result);
+}
+static bool check_pass_length(String &_pass)
+{
+  bool result = _pass.length() >= 8 && _pass.length() <= 64;
+  if (!result)
+  {
+    WFC_PRINTLN(F("Incorrect password length (8-64 characters)."));
+  }
   return (result);
 }
