@@ -446,6 +446,13 @@ public:
  */
   void begin(shWebServer *_server, const String &_config_page = "/wifi_config");
 
+/**
+ * @brief увелличение размера памяти под EEPROM
+ * 
+ * @param _add_eeprom_size дополнительного размер под EEPROM
+ */
+  void setAdditionalEepromSize(uint16_t _add_eeprom_size);
+
   /**
    * @brief обработка событий модуля
    *

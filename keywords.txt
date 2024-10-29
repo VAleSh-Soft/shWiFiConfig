@@ -17,6 +17,7 @@ setCheckTimer	KEYWORD2
 setLogOnState	KEYWORD2
 setCryptState	KEYWORD2
 setNoWiFiSleepMode	KEYWORD2
+setAdditionalEepromSize	KEYWORD2
 setApSsid	KEYWORD2
 setApPass	KEYWORD2
 setApIP	KEYWORD2
