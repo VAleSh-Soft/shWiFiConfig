@@ -238,11 +238,10 @@ void shWiFiConfig::begin(shWebServer *_server, const String &_config_page)
 {
   file_system = NULL;
   use_eeprom = true;
-  start_eeprom(_eeprom_size);
   _begin(_server, _config_page);
 }
 
-void shWiFiConfig::setAdditionalEepromSize(uint16_t _add_eeprom_size);
+void shWiFiConfig::eepromInit(uint16_t _add_eeprom_size)
 {
   start_eeprom(CONFIG_SIZE + _add_eeprom_size);
 }

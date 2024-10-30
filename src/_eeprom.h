@@ -11,7 +11,7 @@ void start_eeprom(uint16_t size)
   EEPROM_SIZE = size + 2; // резервируем два байта для размера строки
   if (EEPROM_SIZE > 0x1000)
   {
-    EEPROM_SIZE = 0x1000; // максимально допустимый размер EEPROM
+    EEPROM_SIZE = 0x1000; // максимально допустимый размер EEPROM (4096 байт)
   }
   
   EEPROM.begin(EEPROM_SIZE);

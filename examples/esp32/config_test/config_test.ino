@@ -69,6 +69,7 @@ void setup()
 
 #if defined(SAVE_CONFIG_TO_EEPROM)
   // инициируем конфигурацию с сохранением в EEPROM
+  wifi_config.eepromInit();
   wifi_config.begin(&HTTP);
 #else
   // инициируем конфигурацию с сохранением в файловой системе

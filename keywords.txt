@@ -17,7 +17,6 @@ setCheckTimer	KEYWORD2
 setLogOnState	KEYWORD2
 setCryptState	KEYWORD2
 setNoWiFiSleepMode	KEYWORD2
-setAdditionalEepromSize	KEYWORD2
 setApSsid	KEYWORD2
 setApPass	KEYWORD2
 setApIP	KEYWORD2
@@ -65,6 +64,7 @@ getLedPin	KEYWORD2
 setApConfig	KEYWORD2
 setStaConfig	KEYWORD2
 begin	KEYWORD2
+eepromInit	KEYWORD2
 tick	KEYWORD2
 loadConfig	KEYWORD2
 saveConfig	KEYWORD2
