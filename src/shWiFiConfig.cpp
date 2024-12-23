@@ -16,7 +16,7 @@ shWiFiConfig::shWiFiConfig(String &adm_name, String &adm_pass)
   setAdminData(adm_name, adm_pass);
 }
 
-void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkTimer = _timer; }
+void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkInterval = _timer; }
 
 void shWiFiConfig::setLogOnState(bool log_on, Print *_serial)
 {
@@ -155,7 +155,7 @@ void shWiFiConfig::setAdminData(String &name, String &pass)
   }
 }
 
-uint32_t shWiFiConfig::getCheckTimer() { return (checkTimer); }
+uint32_t shWiFiConfig::getCheckTimer() { return (checkInterval); }
 
 bool shWiFiConfig::getLogOnState() { return (logOnState); }
 
@@ -248,10 +248,9 @@ void shWiFiConfig::eepromInit(uint16_t _add_eeprom_size)
 
 void shWiFiConfig::tick()
 {
-  static uint32_t timer = millis();
-  if (millis() - timer > checkTimer)
+  if (millis() - checkTimer > checkInterval)
   {
-    timer = millis();
+    checkTimer = millis();
     checkStaConnection();
   }
 
@@ -491,7 +490,6 @@ void LedState::setUseLed(bool _use)
 
 void LedState::setLevelsForPWM(int16_t _max, int16_t _min)
 {
-
   max_pwm = (_max < 1024) ? ((_max >= 0) ? _max : 0) : 1023;
   min_pwm = (_min < 1024) ? ((_min >= 0) ? _min : 0) : 1023;
 }

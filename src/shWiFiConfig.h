@@ -25,7 +25,8 @@ typedef ESP8266WebServer shWebServer;
 class shWiFiConfig
 {
 private:
-  uint32_t checkTimer = 20000;
+  uint32_t checkInterval = 20000;
+  uint32_t checkTimer = millis();
 
 public:
   /**
