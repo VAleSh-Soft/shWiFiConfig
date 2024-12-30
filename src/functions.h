@@ -134,10 +134,7 @@ static void set_config()
 {
   WiFi.mode(curMode);
 
-  if (&Serial != NULL)
-  {
-    serial = &Serial;
-  }
+  serial = &Serial;
 }
 
 static void _begin(shWebServer *_server, const String &_config_page)
@@ -289,14 +286,6 @@ static void handleGetApList()
   http_server->send(200, FPSTR(TEXT_JSON), json);
 }
 
-static void handleShowSavePage()
-{
-  const String successResponse =
-      F("<META http-equiv=\"refresh\" content=\"1;URL=/\">Save settings..");
-  http_server->client().setNoDelay(true);
-  http_server->send(200, FPSTR(TEXT_HTML), successResponse);
-}
-
 // ===================================================
 
 static bool save_config_to_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc)
@@ -383,13 +372,9 @@ static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
   }
 
   char *str = read_string_from_eeprom(EEPROM_INDEX_FOR_WRITE);
-  if (str)
-  {
-    error = deserializeJson(doc, str);
-    free(str);
-  }
-
-  return (true);
+  error = deserializeJson(doc, str);
+  free(str);
+  return (!error);
 }
 
 static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,

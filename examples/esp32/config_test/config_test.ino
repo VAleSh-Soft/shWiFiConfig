@@ -32,7 +32,7 @@
 #include <WebServer.h>
 #include <shWiFiConfig.h>
 
-#define LED_BUILTIN 4
+#define LED_PIN 4
 
 #define SAVE_CONFIG_TO_EEPROM
 
@@ -87,7 +87,7 @@ void setup()
   // ==== включаем возможность использования комбинированного режима
   // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
   // ==== задаем использование светодиода ============
-  wifi_config.setUseLed(true, LED_BUILTIN);
+  wifi_config.setUseLed(true, LED_PIN);
 
   // ==== устанавливаем соединение с WiFi ============
   if (!wifi_config.startWiFi())
