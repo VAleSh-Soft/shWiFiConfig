@@ -248,7 +248,7 @@ void shWiFiConfig::eepromInit(uint16_t _add_eeprom_size)
 
 void shWiFiConfig::tick()
 {
-  if (millis() - checkTimer > checkInterval)
+  if ((checkInterval > 0) && (millis() - checkTimer > checkInterval))
   {
     checkTimer = millis();
     checkStaConnection();
