@@ -312,7 +312,7 @@ void shWiFiConfig::checkStaConnection()
 {
   if (curMode == WIFI_STA || curMode == WIFI_AP_STA)
   {
-    // если мы в режиме точки доступа
+    // если мы не в режиме точки доступа
     if (!WiFi.isConnected())
     {
       WFC_PRINTLN(F("WiFi connection lost"));
