@@ -1,5 +1,4 @@
-#ifndef __SHWIFICONFIG_H__
-#define __SHWIFICONFIG_H__
+#pragma once
 
 #if defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266WiFi.h>
@@ -14,6 +13,7 @@
 #include <FS.h>
 #include <ArduinoJson.h>
 #include <Ticker.h>
+
 
 #if defined(ARDUINO_ARCH_ESP32)
 typedef WebServer shWebServer;
@@ -58,19 +58,19 @@ public:
    */
   void setLogOnState(bool log_on, Print *_serial = &Serial);
 
-  /**
-   * @brief включение/отключение шифрования паролей
-   *
-   * @param _state true - включено; false - выключено
-   * @param _crypt_key ключ для шифрования паролей; если оставить пустым, будет использоваться пароль по умолчанию
-   */
+/**
+ * @brief включение/отключение шифрования паролей
+ * 
+ * @param _state true - включено; false - выключено
+ * @param _crypt_key ключ для шифрования паролей; если оставить пустым, будет использоваться пароль по умолчанию
+ */
   void setCryptState(bool _state, String _crypt_key = "");
 
-  /**
-   * @brief отключение режима сна WiFi
-   *
-   * @param _flag true - WiFi никогда не отключается, false - WiFi работает в режиме Modem-sleep
-   */
+/**
+ * @brief отключение режима сна WiFi
+ * 
+ * @param _flag true - WiFi никогда не отключается, false - WiFi работает в режиме Modem-sleep
+ */
   void setNoWiFiSleepMode(bool _flag = true);
 
   /**
@@ -195,7 +195,7 @@ public:
 
   /**
    * @brief установить значения ШИМ для максимальной и минимальной яркости индикаторного светодиода в режиме подключения к точке доступа (STA); т.к. светодиод подключается в обратной полярности (катодом к пину, анодом к VCC), максимальной яркости светодиода будет соответствовать минимальное значение ШИМ; максимальные значения - 1023
-   *
+   * 
    * @param _max максимальный уровень ШИМ (для минимальной яркости светодиода)
    * @param _min минимальный уровень ШИМ (для максимальной яркости светодиода)
    */
@@ -439,19 +439,19 @@ public:
    */
   void begin(shWebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
 
-  /**
-   * @brief инициализация модуля с сохранением настроек в EEPROM
-   *
-   * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг
-   * @param _config_page адрес страницы Web-интерфейса модуля
-   */
+/**
+ * @brief инициализация модуля с сохранением настроек в EEPROM
+ * 
+ * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг 
+ * @param _config_page адрес страницы Web-интерфейса модуля
+ */
   void begin(shWebServer *_server, const String &_config_page = "/wifi_config");
 
-  /**
-   * @brief инициализация EEPROM
-   *
-   * @param _add_eeprom_size дополнительный размер под EEPROM (0..3070 байт)
-   */
+/**
+ * @brief инициализация EEPROM
+ * 
+ * @param _add_eeprom_size дополнительный размер под EEPROM (0..3070 байт)
+ */
   void eepromInit(uint16_t _add_eeprom_size = 0);
 
   /**
@@ -584,5 +584,3 @@ public:
   void setUseLed(bool _use);
   void setLevelsForPWM(int16_t _max, int16_t _min);
 };
-
-#endif
