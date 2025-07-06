@@ -27,8 +27,6 @@ uint16_t get_json_size(uint16_t address)
 
 void write_string_to_eeprom(char *data, uint16_t address)
 {
-  EEPROM.begin(EEPROM_SIZE);
-
   uint16_t len = strlen(data);
   EEPROM.put(address, len); // сохраняем размер строки - первые два байта
   address += 2;             // саму строку пишем следом за размером
