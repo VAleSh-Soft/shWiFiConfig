@@ -1,5 +1,5 @@
 #######################################
-# Syntax Coloring Map For shTaskManager
+# Syntax Coloring Map For shWiFiConfig
 #######################################
 
 #######################################
