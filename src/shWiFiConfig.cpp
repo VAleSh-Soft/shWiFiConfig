@@ -113,25 +113,19 @@ void shWiFiConfig::setLedPwmLevels(int16_t _max, int16_t _min)
 
 void shWiFiConfig::setStaSsidData(String &ssid, String &pass)
 {
-  if (check_ssid_length(ssid))
+  if (check_ssid_length(ssid) && check_pass_length(pass))
   {
     staSsid = ssid;
-    if (check_pass_length(pass))
-    {
-      staPass = pass;
-    }
+    staPass = pass;
   }
 }
 
 void shWiFiConfig::setApSsidData(String &ssid, String &pass)
 {
-  if (check_ssid_length(ssid))
+  if (check_ssid_length(ssid) && check_pass_length(pass))
   {
     apSsid = ssid;
-    if (check_pass_length(pass))
-    {
-      apPass = pass;
-    }
+    apPass = pass;
   }
 }
 
@@ -139,14 +133,11 @@ void shWiFiConfig::setAdminData(String &name, String &pass)
 {
   if (name != "" && pass != "")
   {
-    if (name.length() >= 5)
+    if (name.length() >= 5 && check_pass_length(pass))
     {
       admName = name;
-      if (check_pass_length(pass))
-      {
-        admPass = pass;
-        useAdmPass = true;
-      }
+      admPass = pass;
+      useAdmPass = true;
     }
     else
     {
@@ -254,7 +245,11 @@ void shWiFiConfig::tick()
     checkStaConnection();
   }
 
-  http_server->handleClient();
+  if (http_server)
+  {
+    http_server->handleClient();
+  }
+
   delay(1);
 }
 

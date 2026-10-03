@@ -143,14 +143,17 @@ static void _begin(shWebServer *_server, const String &_config_page)
 
   http_server = _server;
 
-  // вызов страницы настройки WiFi
-  http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
-  // заполнение полей страницы настройки WiFi
-  http_server->on("/wifi_getconfig", HTTP_GET, handleReadSetting);
-  // сохранение настроек
-  http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
-  // получение списка доступных точек доступа
-  http_server->on("/wifi_getaplist", HTTP_GET, handleGetApList);
+  if (http_server != NULL)
+  {
+    // вызов страницы настройки WiFi
+    http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
+    // заполнение полей страницы настройки WiFi
+    http_server->on("/wifi_getconfig", HTTP_GET, handleReadSetting);
+    // сохранение настроек
+    http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
+    // получение списка доступных точек доступа
+    http_server->on("/wifi_getaplist", HTTP_GET, handleGetApList);
+  }
 }
 
 // ==== реакции сервера ==============================
@@ -489,10 +492,10 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
 
   for (byte i = 0; i < 6; i++)
   {
-    String s = doc[_str[i]].as<String>();
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
-    if (s != "null")
+    if (!doc[_str[i]].isNull())
     {
+      String s = doc[_str[i]].as<String>();
       if (crpt && i != 5)
       {
         s = crypt_data.encode(s, i);
@@ -504,10 +507,10 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
 
   for (byte i = 6; i < 12; i++)
   {
-    IPAddress ip;
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
-    if (ip.fromString(doc[_str[i]].as<String>()))
+    if (!doc[_str[i]].isNull())
     {
+      IPAddress ip.fromString(doc[_str[i]].as<String>());
       *ip_val[i - 6] = ip;
     }
   }
@@ -669,12 +672,18 @@ static bool start_sta(String &ssid, String &pass, bool search_ssid)
 #if defined(ARDUINO_ARCH_ESP8266)
       if (wifi_station_get_connect_status() == STATION_WRONG_PASSWORD)
       {
-        WFC_PRINTLN(F("Incorrect password!"));
         badPassword = true;
       }
 #else
-      badPassword = true;
+      if (WiFI.status() == WL_CONNECT_FAILED)
+      {
+        badPassword = true;
+      }
 #endif
+    }
+    if (badPassword)
+    {
+      WFC_PRINTLN(F("Incorrect password!"));
     }
   }
   WFC_PRINTLN("");
