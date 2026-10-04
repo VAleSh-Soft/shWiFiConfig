@@ -14,6 +14,14 @@
 #include <ArduinoJson.h>
 #include <Ticker.h>
 
+// ===================================================
+
+#define DEFAULT_AP_SSID "WIFI_AP_"
+#define DEFAULT_AP_PASSWORD "12345678"
+#define DEFAULT_ADMIN_NAME "admin"
+#define DEFAULT_ADMIN_PASSWORD "admin"
+
+// ===================================================
 
 #if defined(ARDUINO_ARCH_ESP32)
 typedef WebServer shWebServer;

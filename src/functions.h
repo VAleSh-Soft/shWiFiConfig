@@ -33,8 +33,8 @@ static const char TEXT_JSON[] PROGMEM = "text/json";
 // ==== настройки WiFi ===============================
 
 // ==== AP ======================================
-static String apSsid = "WIFI_AP_";
-static String apPass = "12345678";
+static String apSsid = DEFAULT_AP_SSID;
+static String apPass = DEFAULT_AP_PASSWORD;
 static IPAddress apIP(192, 168, 4, 1);
 static IPAddress apGateway(192, 168, 4, 1);
 static IPAddress apMask(255, 255, 255, 0);
@@ -50,8 +50,8 @@ static bool ap_sta_mode = false;
 static bool useComboMode = false;
 // ==== Other ===================================
 static bool useAdmPass = false;
-static String admName = "admin";
-static String admPass = "admin";
+static String admName = DEFAULT_ADMIN_NAME;
+static String admPass = DEFAULT_ADMIN_PASSWORD;
 static bool useLed = true;
 static bool ledOn = true;
 static int8_t ledPin = -1;
@@ -81,8 +81,8 @@ static const String use_adm_pass_str = "use_adm_pass";
 static const String a_name_str = "a_name";
 static const String a_pass_str = "a_pass";
 static const String use_led_str = "use_led";
-static const String led_on_off = "led_on";
-static const String crypt_on_off = "crypt";
+static const String led_on_off_str = "led_on";
+static const String crypt_on_off_str = "crypt";
 
 // ===================================================
 
@@ -375,6 +375,11 @@ static bool load_from_eeprom(StaticJsonDocument<CONFIG_SIZE> &doc,
   }
 
   char *str = read_string_from_eeprom(EEPROM_INDEX_FOR_WRITE);
+  if (str == NULL)
+  {
+    WFC_PRINTLN(F("Failed to allocate memory for WiFi config, default config used"));
+    return (false);
+  }
   error = deserializeJson(doc, str);
   free(str);
   return (!error);
@@ -477,25 +482,37 @@ static void set_crypt_state(bool _state, String _crypt_key)
 static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
                             bool toReWrite)
 {
-  String _str[] = {ap_ssid_str, ap_pass_str, pass_str, a_name_str, a_pass_str, ssid_str,
-                   ap_ip_str, ap_gateway_str, ap_mask_str, ip_str, gateway_str, mask_str};
+  bool crpt = false;
+
+  // указатели на имена параметров, чтобы не копировать 17 строк при каждом вызове
+  const String *_str[] = {&ap_ssid_str, &ap_pass_str, &pass_str,     &a_name_str,
+                          &a_pass_str,  &ssid_str,    &ap_ip_str,    &ap_gateway_str,
+                          &ap_mask_str, &ip_str,      &gateway_str,  &mask_str,
+                          &static_ip_str, &ap_sta_mode_str, &use_adm_pass_str,
+                          &led_on_off_str, &crypt_on_off_str};
+
   String *str_val[] = {&apSsid, &apPass, &staPass, &admName, &admPass, &staSsid};
 
   IPAddress *ip_val[] = {&apIP, &apGateway, &apMask, &staIP, &staGateway, &staMask};
 
-  staticIP = doc[static_ip_str].as<bool>();
-  ap_sta_mode = doc[ap_sta_mode_str].as<bool>();
-  useAdmPass = doc[use_adm_pass_str].as<bool>();
-  ledOn = doc[led_on_off].as<bool>();
+  bool *bool_val[] = {&staticIP, &ap_sta_mode, &useAdmPass, &ledOn, &crpt};
+
+  for (uint8_t i = 12; i < 17; i++)
+  {
+    if (!doc[*_str[i]].isNull())
+    {
+      *bool_val[i - 12] = doc[*_str[i]].as<bool>();
+    }
+  }
+
   led.setUseLed(ledOn);
-  bool crpt = doc[crypt_on_off].as<bool>();
 
   for (byte i = 0; i < 6; i++)
   {
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
-    if (!doc[_str[i]].isNull())
+    if (!doc[*_str[i]].isNull())
     {
-      String s = doc[_str[i]].as<String>();
+      String s = doc[*_str[i]].as<String>();
       if (crpt && i != 5)
       {
         s = crypt_data.encode(s, i);
@@ -508,10 +525,10 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
   for (byte i = 6; i < 12; i++)
   {
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
-    if (!doc[_str[i]].isNull())
+    if (!doc[*_str[i]].isNull())
     {
-      IPAddress ip.fromString(doc[_str[i]].as<String>());
-      *ip_val[i - 6] = ip;
+      IPAddress ip;
+      *ip_val[i - 6] = ip.fromString(doc[*_str[i]].as<String>());
     }
   }
 
@@ -539,8 +556,8 @@ static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc, bool to_cry
   doc[use_adm_pass_str] = (byte)useAdmPass;
   doc[a_name_str] = (to_crypt) ? crypt_data.encode(admName, 3) : admName;
   doc[a_pass_str] = (to_crypt) ? crypt_data.encode(admPass, 4) : admPass;
-  doc[led_on_off] = (byte)ledOn;
-  doc[crypt_on_off] = (byte)crypt_data.getCryptState();
+  doc[led_on_off_str] = (byte)ledOn;
+  doc[crypt_on_off_str] = (byte)crypt_data.getCryptState();
 }
 
 // ===================================================
@@ -549,7 +566,7 @@ static bool find_ap(String ssid)
 {
   bool result = false;
 
-  if (staSsid != "")
+  if (ssid != "")
   {
     led.init(100, true);
     WFC_PRINT(F("Searche for access point "));
@@ -637,7 +654,6 @@ static bool start_sta(String &ssid, String &pass, bool search_ssid)
 
   if (!search_ssid || find_ap(ssid))
   {
-    WiFi.hostname(apSsid);
     if (staticIP)
     {
       set_sta_config(staIP, staGateway, staMask);
@@ -675,7 +691,7 @@ static bool start_sta(String &ssid, String &pass, bool search_ssid)
         badPassword = true;
       }
 #else
-      if (WiFI.status() == WL_CONNECT_FAILED)
+      if (WiFi.status() == WL_CONNECT_FAILED)
       {
         badPassword = true;
       }
@@ -727,12 +743,13 @@ static bool check_ssid_length(String &_ssid)
   }
   return (result);
 }
+
 static bool check_pass_length(String &_pass)
 {
-  bool result = _pass.length() >= 8 && _pass.length() <= 64;
+  bool result = _pass.length() >= 8 && _pass.length() <= 63;
   if (!result)
   {
-    WFC_PRINTLN(F("Incorrect password length (8-64 characters)"));
+    WFC_PRINTLN(F("Incorrect password length (8-63 characters)"));
   }
   return (result);
 }

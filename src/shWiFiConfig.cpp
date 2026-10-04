@@ -40,11 +40,15 @@ void shWiFiConfig::setApSsid(String &ap_ssid)
   {
     apSsid = ap_ssid;
   }
+  else
+  {
+    apSsid = DEFAULT_AP_SSID;
+  }
 }
 
 void shWiFiConfig::setApPass(String &ap_pass)
 {
-  if (check_pass_length(ap_pass))
+  if (check_pass_length(ap_pass) || ap_pass.length() == 0)
   {
     apPass = ap_pass;
   }
@@ -58,18 +62,12 @@ void shWiFiConfig::setApMask(IPAddress &ap_mask) { apMask = ap_mask; }
 
 void shWiFiConfig::setStaSsid(String &sta_ssid)
 {
-  if (check_ssid_length(sta_ssid))
-  {
-    staSsid = sta_ssid;
-  }
+  staSsid = sta_ssid;
 }
 
 void shWiFiConfig::setStaPass(String &sta_pass)
 {
-  if (check_pass_length(sta_pass))
-  {
-    staPass = sta_pass;
-  }
+  staPass = sta_pass;
 }
 
 void shWiFiConfig::setStaIP(IPAddress &sta_ip) { staIP = sta_ip; }
@@ -113,36 +111,27 @@ void shWiFiConfig::setLedPwmLevels(int16_t _max, int16_t _min)
 
 void shWiFiConfig::setStaSsidData(String &ssid, String &pass)
 {
-  if (check_ssid_length(ssid) && check_pass_length(pass))
-  {
-    staSsid = ssid;
-    staPass = pass;
-  }
+  staSsid = ssid;
+  staPass = pass;
 }
 
 void shWiFiConfig::setApSsidData(String &ssid, String &pass)
 {
-  if (check_ssid_length(ssid) && check_pass_length(pass))
-  {
-    apSsid = ssid;
-    apPass = pass;
-  }
+  setApSsid(ssid);
+  setApPass(pass);
 }
 
 void shWiFiConfig::setAdminData(String &name, String &pass)
 {
-  if (name != "" && pass != "")
+  if ((name.length() >= 5 && name.length() <= 16) && check_pass_length(pass))
   {
-    if (name.length() >= 5 && check_pass_length(pass))
-    {
-      admName = name;
-      admPass = pass;
-      useAdmPass = true;
-    }
-    else
-    {
-      WFC_PRINTLN(F("Admin name is too short (min 5 characters)"));
-    }
+    admName = name;
+    admPass = pass;
+    useAdmPass = true;
+  }
+  else
+  {
+    WFC_PRINTLN(F("Incorrect administrator username or password length."));
   }
 }
 
