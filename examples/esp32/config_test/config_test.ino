@@ -7,7 +7,14 @@
  *
  *        Для доступа к настройкам введите в адресной строке браузера
  *        http://your_ip/wifi_config , где your_ip - IP-адрес модуля.
- *        Или воспользуйтесь ссылкой "WiFi configuration page" на 
+ *        Или воспользуйтесь ссылкой "WiFi configuration page" на
+ *        главной странице модуля.
+ * 
+ *        Кроме того в примере показана возможность защиты паролем администратора
+ *        не только страниц WiFi-конфигурации, но и пользовательской страницы,
+ *        зарегистрированной с помощью server.on(). Адрес тестовой страницы:
+ *        http://your_ip/test , где your_ip - IP-адрес модуля.
+ *        Или воспользуйтесь ссылкой "Password-protected page" на
  *        главной странице модуля.
  *
  *        Сохранение параметров возможно как в файловой системе модуля, так и в
@@ -37,10 +44,17 @@
 
 #define LED_PIN 4
 
+// закомментируйте эту строку, если хотите сохранять настройки в файловой системе модуля
+// иначе они будут сохраняться в EEPROM
 #define SAVE_CONFIG_TO_EEPROM
 
 String ssid = "**********"; // имя (SSID) вашей Wi-Fi сети
 String pass = "**********"; // пароль для подключения к вашей Wi-Fi сети
+
+String adm_name = "admin";    // пароль администратора для входа на страницу WiFi-конфигурации
+String adm_pass = "12345678"; // пароль администратора для входа на страницу WiFi-конфигурации
+
+String config_page = "/wifi_config"; // адрес страницы WiFi-конфигурации
 
 // Web интерфейс для устройства
 WebServer HTTP(80);
@@ -67,19 +81,29 @@ void setup()
 
   // ==== установим данные подключения по умолчанию ==
   wifi_config.setStaSsidData(ssid, pass);
+
+  // ==== установим логин и пароль администратора ====
+  wifi_config.setAdminData(adm_name, adm_pass);
+
   // ==== отключаем спящий режим WiFi ================
   // wifi_config.setNoWiFiSleepMode(); // раскомментируйте строку, если вам не нужен спящий режим WiFi
+
+  // ==== включаем возможность использования комбинированного режима
+  // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
+
+  // ==== задаем использование светодиода ============
+  wifi_config.setUseLed(true, LED_PIN);
 
 #if defined(SAVE_CONFIG_TO_EEPROM)
 
   // инициируем конфигурацию с сохранением в EEPROM
   wifi_config.eepromInit();
-  wifi_config.begin(&HTTP, "/wifi_config");
+  wifi_config.begin(&HTTP, config_page);
 
 #else
 
   // инициируем конфигурацию с сохранением в файловой системе
-  wifi_config.begin(&HTTP, &FILESYSTEM, "/wifi_config");
+  wifi_config.begin(&HTTP, &FILESYSTEM, config_page);
   // ==== инициализируем файловую систему ============
   if (FILESYSTEM.begin(true))
 
@@ -87,15 +111,10 @@ void setup()
   {
     // ==== включаем шифрование паролей ==============
     wifi_config.setCryptState(true);
+
     // == восстанавливаем сохраненные настройки WiFi =
     wifi_config.loadConfig();
   }
-
-  // ==== включаем возможность использования комбинированного режима
-  // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
-
-  // ==== задаем использование светодиода ============
-  wifi_config.setUseLed(true, LED_PIN);
 
   // ==== устанавливаем соединение с WiFi ============
   if (!wifi_config.startWiFi())
@@ -105,9 +124,15 @@ void setup()
 
   // ==== настраиваем и запускаем HTTP-сервер ========
 
-  // добавляем стартовую страницу модуля со ссылкой на страницу конфигурации
+  // регистрируем стартовую страницу модуля со ссылками на страницу конфигурации 
+  // и тестовую страницу, защищенную паролем
   HTTP.on("/", HTTP_GET, []()
-          { HTTP.send(200, "text/html", "<p align='center'  style='font-size: large;'><a href='/wifi_config'>WiFi configuration page</a></p>"); });
+          { HTTP.send(200, "text/html", "<p align='center'  style='font-size: large;'><a href='/wifi_config'>WiFi configuration page</a></p><p align='center'  style='font-size: large;margin-top: 50px;'><a href='/test'>Password-protected page</a></p>"); });
+  // тестовая страница для демонстрации парольной защиты
+  HTTP.on("/test", HTTP_GET, []()
+          { if (!wifi_config.isAuthenticated()) return;
+            HTTP.send(200, "text/html", "<p align='center' style='font-size: large;'>Test page</p>"); });
+  // стандартная реакция на запрос несуществующей страницы
   HTTP.onNotFound([]()
                   { HTTP.send(404, "text/plan", F("404. File not found")); });
 

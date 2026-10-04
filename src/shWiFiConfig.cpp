@@ -327,15 +327,12 @@ void shWiFiConfig::checkStaConnection()
       {
         WiFi.softAPdisconnect();
       }
-      if (!start_ap(apSsid, apPass))
-      {
-        ESP.restart();
-      }
+      start_ap(apSsid, apPass);
     }
   }
   else
   {
-    // пытаться искать и подключаться к сети только если пароль не помечен неверным
+    // пытаться искать и подключаться к сети только если пароль не помечен как неправильный
     if (!badPassword && find_ap(staSsid))
     {
       // если наша сеть найдена, подключиться к ней

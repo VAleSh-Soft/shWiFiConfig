@@ -373,8 +373,6 @@ static void handleGetApList()
   String json = "";
   serializeJson(doc, json);
 
-  Serial.println(json);
-
   http_server->send(200, FPSTR(TEXT_JSON), json);
 }
 
