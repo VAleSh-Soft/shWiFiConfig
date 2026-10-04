@@ -83,6 +83,7 @@ digitalCheck	KEYWORD2
 analogCheck	KEYWORD2
 setUseLed	KEYWORD2
 setLevelsForPWM	KEYWORD2
+isAuthenticated	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

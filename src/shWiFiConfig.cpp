@@ -293,6 +293,26 @@ bool shWiFiConfig::findAp(String &ssid)
   return (find_ap(ssid));
 }
 
+// проверка авторизации для страниц, которые регистрирует пользователь.
+// библиотечные страницы защищены вызовом check_credentials() внутри каждого
+// обработчика; этот метод даёт доступ к той же проверке извне. При неудаче
+// он сам отправляет браузеру ответ 401 с запросом авторизации, поэтому
+// обработчику достаточно сделать return
+bool shWiFiConfig::isAuthenticated()
+{
+  if (check_credentials())
+  {
+    return true;
+  }
+
+  // отправляем 401 с заголовком WWW-Authenticate — браузер покажет окно
+  // ввода логина/пароля (базовая HTTP-аутентификация)
+  http_server->requestAuthentication(BASIC_AUTH,
+                                     make_auth_realm().c_str(),
+                                     String(FPSTR(AUTH_FAIL_MSG)));
+  return false;
+}
+
 void shWiFiConfig::checkStaConnection()
 {
   if (curMode == WIFI_STA || curMode == WIFI_AP_STA)

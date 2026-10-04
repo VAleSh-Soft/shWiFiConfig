@@ -88,6 +88,7 @@ static const String crypt_on_off_str = "crypt";
 
 static bool check_credentials();
 static void deny_access();
+static String make_auth_realm();
 
 static void handleGetConfigPage();
 static void handleReadSetting();
@@ -132,34 +133,6 @@ static bool check_ssid_length(String &_ssid);
 static bool check_pass_length(String &_pass);
 
 // ===================================================
-
-static void set_config()
-{
-  WiFi.mode(curMode);
-
-  serial = &Serial;
-}
-
-static void _begin(shWebServer *_server, const String &_config_page)
-{
-  WiFi.mode(curMode);
-
-  http_server = _server;
-
-  if (http_server != NULL)
-  {
-    // вызов страницы настройки WiFi
-    http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
-    // заполнение полей страницы настройки WiFi
-    http_server->on("/wifi_getconfig", HTTP_GET, handleReadSetting);
-    // сохранение настроек
-    http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
-    // получение списка доступных точек доступа
-    http_server->on("/wifi_getaplist", HTTP_GET, handleGetApList);
-  }
-}
-
-// ==== реакции сервера ==============================
 
 // проверка права доступа к Web-интерфейсу модуля;
 // доступ открыт, если парольный доступ отключен или имя/пароль администратора не заданы
@@ -213,6 +186,34 @@ static String make_auth_realm()
 
   return String("shWiFiConfig ") + mac + "-" + String(hash, HEX);
 }
+
+static void set_config()
+{
+  WiFi.mode(curMode);
+
+  serial = &Serial;
+}
+
+static void _begin(shWebServer *_server, const String &_config_page)
+{
+  WiFi.mode(curMode);
+
+  http_server = _server;
+
+  if (http_server != NULL)
+  {
+    // вызов страницы настройки WiFi
+    http_server->on(_config_page, HTTP_GET, &handleGetConfigPage);
+    // заполнение полей страницы настройки WiFi
+    http_server->on("/wifi_getconfig", HTTP_GET, handleReadSetting);
+    // сохранение настроек
+    http_server->on("/wifi_setconfig", HTTP_POST, handleWriteSetting);
+    // получение списка доступных точек доступа
+    http_server->on("/wifi_getaplist", HTTP_GET, handleGetApList);
+  }
+}
+
+// ==== реакции сервера ==============================
 
 static void handleGetConfigPage()
 {
