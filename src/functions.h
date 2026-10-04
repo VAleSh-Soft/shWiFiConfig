@@ -86,6 +86,9 @@ static const String crypt_on_off_str = "crypt";
 
 // ===================================================
 
+static bool check_credentials();
+static void deny_access();
+
 static void handleGetConfigPage();
 static void handleReadSetting();
 static void handleWriteSetting();
@@ -158,12 +161,32 @@ static void _begin(shWebServer *_server, const String &_config_page)
 
 // ==== реакции сервера ==============================
 
+// проверка права доступа к Web-интерфейсу модуля;
+// доступ открыт, если парольный доступ отключен или имя/пароль администратора не заданы
+static bool check_credentials()
+{
+  if (!useAdmPass || admName == "" || admPass == "")
+  {
+    return true;
+  }
+
+  return http_server->authenticate(admName.c_str(), admPass.c_str());
+}
+
+// отказ в доступе для запросов Web-интерфейса; в отличие от страницы настроек,
+// эти запросы не должны вызывать окно ввода пароля - сервер отвечает 403 без
+// заголовка WWW-Authenticate. Окно ввода запрашивает только страница настроек,
+// после чего браузер сам подставляет полученные данные в остальные запросы того
+// же realm (используется базовая аутентификация - см. requestAuthentication())
+static void deny_access()
+{
+  WFC_PRINTLN(F("Access denied"));
+  http_server->send(403, FPSTR(TEXT_PLAIN), F("Forbidden"));
+}
+
 static void handleGetConfigPage()
 {
-  if (useAdmPass &&
-      admName != "" &&
-      admPass != "" &&
-      !http_server->authenticate(admName.c_str(), admPass.c_str()))
+  if (!check_credentials())
   {
     return http_server->requestAuthentication();
   }
@@ -172,6 +195,11 @@ static void handleGetConfigPage()
 
 static void handleReadSetting()
 {
+  if (!check_credentials())
+  {
+    return deny_access();
+  }
+
   StaticJsonDocument<CONFIG_SIZE> doc;
 
   writeSettingInJson(doc);
@@ -186,6 +214,11 @@ static void handleReadSetting()
 
 static void handleWriteSetting()
 {
+  if (!check_credentials())
+  {
+    return deny_access();
+  }
+
   if (http_server->hasArg("plain") == false)
   {
     http_server->send(200, FPSTR(TEXT_PLAIN), F("Body not received"));
@@ -270,6 +303,11 @@ static void handleWriteSetting()
 
 static void handleGetApList()
 {
+  if (!check_credentials())
+  {
+    return deny_access();
+  }
+
   int n = WiFi.scanNetworks();
 
   StaticJsonDocument<2048> doc;
@@ -485,9 +523,9 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
   bool crpt = false;
 
   // указатели на имена параметров, чтобы не копировать 17 строк при каждом вызове
-  const String *_str[] = {&ap_ssid_str, &ap_pass_str, &pass_str,     &a_name_str,
-                          &a_pass_str,  &ssid_str,    &ap_ip_str,    &ap_gateway_str,
-                          &ap_mask_str, &ip_str,      &gateway_str,  &mask_str,
+  const String *_str[] = {&ap_ssid_str, &ap_pass_str, &pass_str, &a_name_str,
+                          &a_pass_str, &ssid_str, &ap_ip_str, &ap_gateway_str,
+                          &ap_mask_str, &ip_str, &gateway_str, &mask_str,
                           &static_ip_str, &ap_sta_mode_str, &use_adm_pass_str,
                           &led_on_off_str, &crypt_on_off_str};
 
@@ -528,7 +566,10 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
     if (!doc[*_str[i]].isNull())
     {
       IPAddress ip;
-      *ip_val[i - 6] = ip.fromString(doc[*_str[i]].as<String>());
+      if (ip.fromString(doc[*_str[i]].as<String>()))
+      {
+        *ip_val[i - 6] = ip;
+      }
     }
   }
 
