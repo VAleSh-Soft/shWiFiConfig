@@ -7,6 +7,8 @@
  *
  *        Для доступа к настройкам введите в адресной строке браузера
  *        http://your_ip/wifi_config , где your_ip - IP-адрес модуля.
+ *        Или воспользуйтесь ссылкой "WiFi configuration page" на 
+ *        главной странице модуля.
  *
  *        Сохранение параметров возможно как в файловой системе модуля, так и в
  *        EEPROM. Для использования EEPROM раскомментируйте строку
@@ -23,12 +25,13 @@
  *        В примере так же показано использование шифрования паролей при
  *        сохранении параметров.
  *
- * @version 1.2
- * @date 23.10.2024
+ * @version 1.3
+ * @date 04.10.2026
  *
  * @copyright Copyright (c) 2024
  *
  */
+
 #include <WebServer.h>
 #include <shWiFiConfig.h>
 
@@ -68,14 +71,18 @@ void setup()
   // wifi_config.setNoWiFiSleepMode(); // раскомментируйте строку, если вам не нужен спящий режим WiFi
 
 #if defined(SAVE_CONFIG_TO_EEPROM)
+
   // инициируем конфигурацию с сохранением в EEPROM
   wifi_config.eepromInit();
   wifi_config.begin(&HTTP, "/wifi_config");
+
 #else
+
   // инициируем конфигурацию с сохранением в файловой системе
   wifi_config.begin(&HTTP, &FILESYSTEM, "/wifi_config");
   // ==== инициализируем файловую систему ============
   if (FILESYSTEM.begin(true))
+
 #endif
   {
     // ==== включаем шифрование паролей ==============
@@ -86,6 +93,7 @@ void setup()
 
   // ==== включаем возможность использования комбинированного режима
   // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
+
   // ==== задаем использование светодиода ============
   wifi_config.setUseLed(true, LED_PIN);
 
@@ -95,6 +103,11 @@ void setup()
     ESP.restart();
   }
 
+  // ==== настраиваем и запускаем HTTP-сервер ========
+
+  // добавляем стартовую страницу модуля со ссылкой на страницу конфигурации
+  HTTP.on("/", HTTP_GET, []()
+          { HTTP.send(200, "text/html", "<p align='center'  style='font-size: large;'><a href='/wifi_config'>WiFi configuration page</a></p>"); });
   HTTP.onNotFound([]()
                   { HTTP.send(404, "text/plan", F("404. File not found")); });
 

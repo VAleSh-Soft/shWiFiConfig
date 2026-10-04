@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "shWiFiConfig.h"
 #include "extras/c_page.h"
+#include "extras/other_page.h"
 #include "functions.h"
 
 // ==== shWiFiConfig class ===========================

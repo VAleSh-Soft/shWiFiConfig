@@ -184,13 +184,47 @@ static void deny_access()
   http_server->send(403, FPSTR(TEXT_PLAIN), F("Forbidden"));
 }
 
+// Уникальное имя защищённой области (realm) базовой HTTP-аутентификации.
+// Браузер запоминает введённые имя и пароль для пары "адрес сервера + realm",
+// поэтому realm не должен меняться без причины (иначе окно ввода пароля будет
+// появляться при каждом обращении). Значение собирается из MAC-адреса модуля и
+// от имени, и от пароля администратора, поэтому:
+// - при перезагрузке модуля с прежними настройками realm остаётся тем же и
+//   браузер подставляет сохранённые данные без повторного запроса;
+// - при смене имени или пароля realm меняется, и браузер отбрасывает старые
+//   сохранённые данные, поэтому не подставляет неверный пароль (иначе он
+//   получал бы 401 и показывал пустую страницу вместо окна ввода пароля).
+static String make_auth_realm()
+{
+  uint32_t hash = 2166136261UL;
+
+  String credentials = admName + ":" + admPass;
+  for (uint16_t i = 0; i < credentials.length(); i++)
+  {
+    hash = (hash ^ (uint8_t)credentials[i]) * 16777619UL;
+  }
+
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  if (mac.length() > 6)
+  {
+    mac = mac.substring(mac.length() - 6);
+  }
+
+  return String("shWiFiConfig ") + mac + "-" + String(hash, HEX);
+}
+
 static void handleGetConfigPage()
 {
   if (!check_credentials())
   {
-    return http_server->requestAuthentication();
+    // BASIC_AUTH_MODE (0): сервер отвечает 401 с заголовком WWW-Authenticate,
+    // браузер показывает окно ввода и далее сам подставляет данные в запросы
+    return http_server->requestAuthentication(BASIC_AUTH,
+                                              make_auth_realm().c_str(),
+                                              String(FPSTR(AUTH_FAIL_MSG)));
   }
-  http_server->send(200, FPSTR(TEXT_HTML), FPSTR(config_page));
+  http_server->send(200, FPSTR(TEXT_HTML), FPSTR(CONFIG_PAGE));
 }
 
 static void handleReadSetting()
@@ -221,7 +255,7 @@ static void handleWriteSetting()
 
   if (http_server->hasArg("plain") == false)
   {
-    http_server->send(200, FPSTR(TEXT_PLAIN), F("Body not received"));
+    http_server->send(200, FPSTR(TEXT_PLAIN), FPSTR(FAIL_RESPONSE));
     WFC_PRINTLN(F("Failed to save configuration data, data not found"));
     return;
   }
@@ -277,10 +311,7 @@ static void handleWriteSetting()
     }
     readJsonSetting(doc);
     save_config();
-    const String successResponse0 =
-        F("<META http-equiv=\"refresh\" content=\"5;URL=/\"><p align=\"center\">The module will be reconnected, wait...</p>");
-    const String successResponse1 =
-        F("<META http-equiv=\"refresh\" content=\"1;URL=/\"><p align=\"center\">Save settings...</p>");
+
     http_server->client().setNoDelay(true);
     // Если изменили опции, требующие переподключения, переподключить модуль
     if (reconnect)
@@ -288,14 +319,14 @@ static void handleWriteSetting()
       WFC_PRINTLN("");
       WFC_PRINTLN(F("The module will be reconnected, wait.."));
       WFC_PRINTLN("");
-      http_server->send(200, FPSTR(TEXT_HTML), successResponse0);
+      http_server->send(200, FPSTR(TEXT_HTML), FPSTR(SUCCESS_RESPONSE_0));
       delay(100);
       stop_wifi();
       start_wifi();
     }
     else
     {
-      http_server->send(200, FPSTR(TEXT_HTML), successResponse1);
+      http_server->send(200, FPSTR(TEXT_HTML), FPSTR(SUCCESS_RESPONSE_1));
     }
     led.startLed();
   }
@@ -310,12 +341,29 @@ static void handleGetApList()
 
   int n = WiFi.scanNetworks();
 
+  // проверка от дурака - чтобы при плотной сети не превысить
+  // размер выделенной под список памяти
+  uint16_t count = 8; // 8 символов - это количество служебных символов в json-строке списка - {"aps":[]}
+
   StaticJsonDocument<2048> doc;
   if (n > 0)
   {
     for (byte i = 0; i < n; ++i)
     {
-      doc["aps"][i] = WiFi.SSID(i);
+      // увеличиваем счетчик на длину SSID очередной точки
+      // плюс три символа на кавычки и запятую
+      count += WiFi.SSID(i).length() + 3;
+      // если счетчик не превысил два килобайта, добавляем новую запись
+      if (count <= 2048)
+      {
+        doc["aps"][i] = WiFi.SSID(i);
+      }
+      else
+      {
+        // если счетчик превысил два килобайта, завершаем заполнение списка
+        WFC_PRINTLN(F("The SSID list is too long; not all entries fit"));
+        break;
+      }
     }
   }
   else
@@ -323,6 +371,8 @@ static void handleGetApList()
 
   String json = "";
   serializeJson(doc, json);
+
+  Serial.println(json);
 
   http_server->send(200, FPSTR(TEXT_JSON), json);
 }
