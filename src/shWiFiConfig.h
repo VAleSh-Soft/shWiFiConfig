@@ -74,19 +74,19 @@ public:
   void setLogOnState(bool log_on, Print *_serial = &Serial);
 #endif
 
-/**
- * @brief включение/отключение шифрования паролей
- * 
- * @param _state true - включено; false - выключено
- * @param _crypt_key ключ для шифрования паролей; если оставить пустым, будет использоваться пароль по умолчанию
- */
+  /**
+   * @brief включение/отключение шифрования паролей
+   *
+   * @param _state true - включено; false - выключено
+   * @param _crypt_key ключ для шифрования паролей; если оставить пустым, будет использоваться пароль по умолчанию
+   */
   void setCryptState(bool _state, String _crypt_key = "");
 
-/**
- * @brief отключение режима сна WiFi
- * 
- * @param _flag true - WiFi никогда не отключается, false - WiFi работает в режиме Modem-sleep
- */
+  /**
+   * @brief отключение режима сна WiFi
+   *
+   * @param _flag true - WiFi никогда не отключается, false - WiFi работает в режиме Modem-sleep
+   */
   void setNoWiFiSleepMode(bool _flag = true);
 
   /**
@@ -211,7 +211,7 @@ public:
 
   /**
    * @brief установить значения ШИМ для максимальной и минимальной яркости индикаторного светодиода в режиме подключения к точке доступа (STA); т.к. светодиод подключается в обратной полярности (катодом к пину, анодом к VCC), максимальной яркости светодиода будет соответствовать минимальное значение ШИМ; максимальные значения - 1023
-   * 
+   *
    * @param _max максимальный уровень ШИМ (для минимальной яркости светодиода)
    * @param _min минимальный уровень ШИМ (для максимальной яркости светодиода)
    */
@@ -445,8 +445,14 @@ public:
    * @param ip IP-адрес модуля
    * @param gateway адрес шлюза
    * @param mask маска сети
+   * @param dns1 адрес DNS1
+   * @param dns2 адрес DNS2
    */
-  void setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &mask);
+  void setStaConfig(IPAddress &ip,
+                    IPAddress &gateway,
+                    IPAddress &mask,
+                    IPAddress dns1 = IPAddress(0, 0, 0, 0),
+                    IPAddress dns2 = IPAddress(0, 0, 0, 0));
 
   /**
    * @brief инициализация модуля с сохранением настроек в файловой системе
@@ -457,19 +463,19 @@ public:
    */
   void begin(shWebServer *_server, FS *_file_system, const String &_config_page = "/wifi_config");
 
-/**
- * @brief инициализация модуля с сохранением настроек в EEPROM
- * 
- * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг 
- * @param _config_page адрес страницы Web-интерфейса модуля
- */
+  /**
+   * @brief инициализация модуля с сохранением настроек в EEPROM
+   *
+   * @param _server ссылка на экземпляр Web-сервера, с которым будет работать конфиг
+   * @param _config_page адрес страницы Web-интерфейса модуля
+   */
   void begin(shWebServer *_server, const String &_config_page = "/wifi_config");
 
-/**
- * @brief инициализация EEPROM
- * 
- * @param _add_eeprom_size дополнительный размер под EEPROM (0..3070 байт)
- */
+  /**
+   * @brief инициализация EEPROM
+   *
+   * @param _add_eeprom_size дополнительный размер под EEPROM (0..3070 байт)
+   */
   void eepromInit(uint16_t _add_eeprom_size = 0);
 
   /**
@@ -568,7 +574,7 @@ public:
   void checkStaConnection();
 
   /**
-   * @brief проверка авторизации пользователя для защиты пользовательских страниц 
+   * @brief проверка авторизации пользователя для защиты пользовательских страниц
    * Web-сервера.
    *
    * Все страницы, которые регистрирует сама библиотека, защищены автоматически.

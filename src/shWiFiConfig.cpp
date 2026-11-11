@@ -203,12 +203,21 @@ void shWiFiConfig::setApConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
 
 void shWiFiConfig::setStaConfig()
 {
-  set_sta_config(staIP, staGateway, staMask);
+  set_sta_config(staIP, staGateway, staMask, staDns1, staDns2);
 }
 
-void shWiFiConfig::setStaConfig(IPAddress &ip, IPAddress &gateway, IPAddress &mask)
+void shWiFiConfig::setStaConfig(IPAddress &ip,
+                                IPAddress &gateway,
+                                IPAddress &mask,
+                                IPAddress dns1,
+                                IPAddress dns2)
 {
-  set_sta_config(ip, gateway, mask);
+  if ((uint32_t)dns1 == (uint32_t)0)
+  {
+    dns1 = gateway;
+  }
+  
+  set_sta_config(ip, gateway, mask, dns1, dns2);
 }
 
 void shWiFiConfig::begin(shWebServer *_server, FS *_file_system, const String &_config_page)
