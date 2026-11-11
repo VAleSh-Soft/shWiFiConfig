@@ -5,12 +5,21 @@
 
 // ===================================================
 
-#define WFC_PRINT(x)        \
-  if (logOnState && serial) \
-  serial->print(x)
-#define WFC_PRINTLN(x)      \
-  if (logOnState && serial) \
-  serial->println(x)
+#ifdef SWITCH_RELAY_LOG_OFF
+#define WFC_PRINT(x)
+#define WFC_PRINTLN(x)
+#else
+#define WFC_PRINT(x)          \
+  {                           \
+    if (logOnState && serial) \
+      serial->print(x);       \
+  }
+#define WFC_PRINTLN(x)        \
+  {                           \
+    if (logOnState && serial) \
+      serial->println(x);     \
+  }
+#endif
 
 #define EEPROM_INDEX_FOR_WRITE 0
 
@@ -45,6 +54,8 @@ static bool staticIP = false;
 static IPAddress staIP(192, 168, 0, 50);
 static IPAddress staGateway(192, 168, 0, 1);
 static IPAddress staMask(255, 255, 255, 0);
+static IPAddress staDns1 = staGateway;
+static IPAddress staDns2((uint32_t)0);
 // ==== AP + STA ================================
 static bool ap_sta_mode = false;
 static bool useComboMode = false;
@@ -60,8 +71,10 @@ static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
 static String fileName = "/wifi.json";
 
+#ifndef SWITCH_RELAY_LOG_OFF
 static Print *serial = NULL;
 static bool logOnState = true;
+#endif
 
 // ==== Имена JSON-параметров ========================
 static const String ap_ssid_str = "ap_ssid";
@@ -75,6 +88,8 @@ static const String static_ip_str = "static_ip";
 static const String ip_str = "ip";
 static const String gateway_str = "gateway";
 static const String mask_str = "mask";
+static const String dns1_str = "dns1";
+static const String dns2_str = "dns2";
 static const String use_combo_mode_str = "use_combo";
 static const String ap_sta_mode_str = "ap_sta";
 static const String use_adm_pass_str = "use_adm_pass";
@@ -120,7 +135,9 @@ static bool find_ap(String ssid);
 static void set_cur_mode(WiFiMode_t _mode);
 static void set_sta_config(const IPAddress &ip,
                            const IPAddress &gateway,
-                           const IPAddress &mask);
+                           const IPAddress &mask,
+                           const IPAddress &dns1,
+                           const IPAddress &dns2);
 static void set_ap_config(const IPAddress &ip,
                           const IPAddress &gateway,
                           const IPAddress &mask);
@@ -191,7 +208,9 @@ static void set_config()
 {
   WiFi.mode(curMode);
 
+#ifndef SWITCH_RELAY_LOG_OFF
   serial = &Serial;
+#endif
 }
 
 static void _begin(shWebServer *_server, const String &_config_page)
@@ -290,7 +309,11 @@ static void handleWriteSetting()
                     (ip.fromString(doc[gateway_str].as<String>()) &&
                      ((uint32_t)ip != (uint32_t)staGateway)) ||
                     (ip.fromString(doc[mask_str].as<String>()) &&
-                     ((uint32_t)ip != (uint32_t)staMask));
+                     ((uint32_t)ip != (uint32_t)staMask)) ||
+                    (ip.fromString(doc[dns1_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)staDns2)) ||
+                    (ip.fromString(doc[dns2_str].as<String>()) &&
+                     ((uint32_t)ip != (uint32_t)staDns2));
       }
     }
     if (!reconnect && (curMode == WIFI_AP || curMode == WIFI_AP_STA))
@@ -574,21 +597,21 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
   // указатели на имена параметров, чтобы не копировать 17 строк при каждом вызове
   const String *_str[] = {&ap_ssid_str, &ap_pass_str, &pass_str, &a_name_str,
                           &a_pass_str, &ssid_str, &ap_ip_str, &ap_gateway_str,
-                          &ap_mask_str, &ip_str, &gateway_str, &mask_str,
+                          &ap_mask_str, &ip_str, &gateway_str, &mask_str, &dns1_str, &dns2_str,
                           &static_ip_str, &ap_sta_mode_str, &use_adm_pass_str,
                           &led_on_off_str, &crypt_on_off_str};
 
   String *str_val[] = {&apSsid, &apPass, &staPass, &admName, &admPass, &staSsid};
 
-  IPAddress *ip_val[] = {&apIP, &apGateway, &apMask, &staIP, &staGateway, &staMask};
+  IPAddress *ip_val[] = {&apIP, &apGateway, &apMask, &staIP, &staGateway, &staMask, &staDns1, &staDns2};
 
   bool *bool_val[] = {&staticIP, &ap_sta_mode, &useAdmPass, &ledOn, &crpt};
 
-  for (uint8_t i = 12; i < 17; i++)
+  for (uint8_t i = 14; i < 19; i++)
   {
     if (!doc[*_str[i]].isNull())
     {
-      *bool_val[i - 12] = doc[*_str[i]].as<bool>();
+      *bool_val[i - 14] = doc[*_str[i]].as<bool>();
     }
   }
 
@@ -609,7 +632,7 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
     }
   }
 
-  for (byte i = 6; i < 12; i++)
+  for (byte i = 6; i < 14; i++)
   {
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
     if (!doc[*_str[i]].isNull())
@@ -642,6 +665,8 @@ static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc, bool to_cry
   doc[ip_str] = staIP.toString();
   doc[gateway_str] = staGateway.toString();
   doc[mask_str] = staMask.toString();
+  doc[dns1_str] = staDns1.toString();
+  doc[dns2_str] = staDns2.toString();
   doc[ap_sta_mode_str] = (byte)ap_sta_mode;
   doc[use_adm_pass_str] = (byte)useAdmPass;
   doc[a_name_str] = (to_crypt) ? crypt_data.encode(admName, 3) : admName;
@@ -694,9 +719,11 @@ static void set_cur_mode(WiFiMode_t _mode)
 
 static void set_sta_config(const IPAddress &ip,
                            const IPAddress &gateway,
-                           const IPAddress &mask)
+                           const IPAddress &mask,
+                           const IPAddress &dns1,
+                           const IPAddress &dns2)
 {
-  WiFi.config(ip, gateway, mask);
+  WiFi.config(ip, gateway, mask, dns1, dns2);
 }
 
 static void set_ap_config(const IPAddress &ip,
@@ -746,7 +773,7 @@ static bool start_sta(String &ssid, String &pass, bool search_ssid)
   {
     if (staticIP)
     {
-      set_sta_config(staIP, staGateway, staMask);
+      set_sta_config(staIP, staGateway, staMask, staDns1, staDns2);
     }
     else
     {

@@ -29,6 +29,12 @@ typedef WebServer shWebServer;
 typedef ESP8266WebServer shWebServer;
 #endif
 
+// =====================================================
+
+#ifdef SH_LOG_OFF
+#define SWITCH_RELAY_LOG_OFF
+#endif
+
 // ==== shWiFiConfig class ===========================
 class shWiFiConfig
 {
@@ -58,6 +64,7 @@ public:
    */
   void setCheckTimer(uint32_t _timer);
 
+#ifndef SWITCH_RELAY_LOG_OFF
   /**
    * @brief включение/отключение выдачи сообщений о работе модуля через Serial
    *
@@ -65,6 +72,7 @@ public:
    * @param _serial интерфейс для вывода сообщений
    */
   void setLogOnState(bool log_on, Print *_serial = &Serial);
+#endif
 
 /**
  * @brief включение/отключение шифрования паролей
@@ -240,6 +248,7 @@ public:
    */
   uint32_t getCheckTimer();
 
+#ifndef SWITCH_RELAY_LOG_OFF
   /**
    * @brief включена или нет выдача сообщений о работе модуля через Serial
    *
@@ -247,6 +256,7 @@ public:
    * @return false
    */
   bool getLogOnState();
+#endif
 
   /**
    * @brief получение текущего режима работы WiFi-модуля
