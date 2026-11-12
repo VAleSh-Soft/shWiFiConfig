@@ -5,7 +5,7 @@
 
 // ===================================================
 
-#ifdef SWITCH_RELAY_LOG_OFF
+#ifdef WIFI_CONFIG_LOG_OFF
 #define WFC_PRINT(x)
 #define WFC_PRINTLN(x)
 #else
@@ -71,7 +71,7 @@ static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
 static String fileName = "/wifi.json";
 
-#ifndef SWITCH_RELAY_LOG_OFF
+#ifndef WIFI_CONFIG_LOG_OFF
 static Print *serial = NULL;
 static bool logOnState = true;
 #endif
@@ -208,7 +208,7 @@ static void set_config()
 {
   WiFi.mode(curMode);
 
-#ifndef SWITCH_RELAY_LOG_OFF
+#ifndef WIFI_CONFIG_LOG_OFF
   serial = &Serial;
 #endif
 }
@@ -244,7 +244,7 @@ static void handleGetConfigPage()
                                               make_auth_realm().c_str(),
                                               String(FPSTR(AUTH_FAIL_MSG)));
   }
-  http_server->send(200, FPSTR(TEXT_HTML), FPSTR(CONFIG_PAGE));
+  http_server->send_P(200, TEXT_HTML, CONFIG_PAGE);
 }
 
 static void handleReadSetting()
@@ -257,8 +257,8 @@ static void handleReadSetting()
   StaticJsonDocument<CONFIG_SIZE> doc;
 
   writeSettingInJson(doc);
-  doc[use_combo_mode_str] = (byte)useComboMode;
-  doc[use_led_str] = (byte)useLed;
+  doc[use_combo_mode_str] = (uint8_t)useComboMode;
+  doc[use_led_str] = (uint8_t)useLed;
 
   String json = "";
   serializeJson(doc, json);
@@ -275,7 +275,7 @@ static void handleWriteSetting()
 
   if (http_server->hasArg("plain") == false)
   {
-    http_server->send(200, FPSTR(TEXT_PLAIN), FPSTR(FAIL_RESPONSE));
+    http_server->send_P(400, TEXT_PLAIN, FAIL_RESPONSE);
     WFC_PRINTLN(F("Failed to save configuration data, data not found"));
     return;
   }
@@ -300,7 +300,7 @@ static void handleWriteSetting()
                      (staPass != doc[pass_str].as<String>());
     if (!reconnect)
     {
-      reconnect = staticIP != (bool)doc[static_ip_str].as<byte>();
+      reconnect = staticIP != (bool)doc[static_ip_str].as<uint8_t>();
       if (!reconnect && staticIP)
       {
         IPAddress ip;
@@ -311,7 +311,7 @@ static void handleWriteSetting()
                     (ip.fromString(doc[mask_str].as<String>()) &&
                      ((uint32_t)ip != (uint32_t)staMask)) ||
                     (ip.fromString(doc[dns1_str].as<String>()) &&
-                     ((uint32_t)ip != (uint32_t)staDns2)) ||
+                     ((uint32_t)ip != (uint32_t)staDns1)) ||
                     (ip.fromString(doc[dns2_str].as<String>()) &&
                      ((uint32_t)ip != (uint32_t)staDns2));
       }
@@ -331,7 +331,7 @@ static void handleWriteSetting()
     }
     if (!reconnect)
     {
-      reconnect = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<byte>();
+      reconnect = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<uint8_t>();
     }
     readJsonSetting(doc);
     save_config();
@@ -343,14 +343,14 @@ static void handleWriteSetting()
       WFC_PRINTLN("");
       WFC_PRINTLN(F("The module will be reconnected, wait.."));
       WFC_PRINTLN("");
-      http_server->send(200, FPSTR(TEXT_HTML), FPSTR(SUCCESS_RESPONSE_0));
+      http_server->send_P(200, TEXT_HTML, SUCCESS_RESPONSE_0);
       delay(100);
       stop_wifi();
       start_wifi();
     }
     else
     {
-      http_server->send(200, FPSTR(TEXT_HTML), FPSTR(SUCCESS_RESPONSE_1));
+      http_server->send_P(200, TEXT_HTML, SUCCESS_RESPONSE_1);
     }
     led.startLed();
   }
@@ -372,7 +372,7 @@ static void handleGetApList()
   StaticJsonDocument<2048> doc;
   if (n > 0)
   {
-    for (byte i = 0; i < n; ++i)
+    for (uint8_t i = 0; i < n; ++i)
     {
       // увеличиваем счетчик на длину SSID очередной точки
       // плюс три символа на кавычки и запятую
@@ -617,7 +617,7 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
 
   led.setUseLed(ledOn);
 
-  for (byte i = 0; i < 6; i++)
+  for (uint8_t i = 0; i < 6; i++)
   {
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
     if (!doc[*_str[i]].isNull())
@@ -632,7 +632,7 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
     }
   }
 
-  for (byte i = 6; i < 14; i++)
+  for (uint8_t i = 6; i < 14; i++)
   {
     // если такой параметр нашелся, загружаем его, иначе у переменной остается значение по умолчанию
     if (!doc[*_str[i]].isNull())
@@ -661,18 +661,18 @@ static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc, bool to_cry
   doc[ap_mask_str] = apMask.toString();
   doc[ssid_str] = staSsid;
   doc[pass_str] = (to_crypt) ? crypt_data.encode(staPass, 2) : staPass;
-  doc[static_ip_str] = (byte)staticIP;
+  doc[static_ip_str] = (uint8_t)staticIP;
   doc[ip_str] = staIP.toString();
   doc[gateway_str] = staGateway.toString();
   doc[mask_str] = staMask.toString();
   doc[dns1_str] = staDns1.toString();
   doc[dns2_str] = staDns2.toString();
-  doc[ap_sta_mode_str] = (byte)ap_sta_mode;
-  doc[use_adm_pass_str] = (byte)useAdmPass;
+  doc[ap_sta_mode_str] = (uint8_t)ap_sta_mode;
+  doc[use_adm_pass_str] = (uint8_t)useAdmPass;
   doc[a_name_str] = (to_crypt) ? crypt_data.encode(admName, 3) : admName;
   doc[a_pass_str] = (to_crypt) ? crypt_data.encode(admPass, 4) : admPass;
-  doc[led_on_off_str] = (byte)ledOn;
-  doc[crypt_on_off_str] = (byte)crypt_data.getCryptState();
+  doc[led_on_off_str] = (uint8_t)ledOn;
+  doc[crypt_on_off_str] = (uint8_t)crypt_data.getCryptState();
 }
 
 // ===================================================
@@ -689,7 +689,7 @@ static bool find_ap(String ssid)
     int8_t n = WiFi.scanNetworks();
     if (n > 0)
     {
-      for (byte i = 0; i < n; ++i)
+      for (uint8_t i = 0; i < n; ++i)
       {
         if (WiFi.SSID(i) == ssid)
         {

@@ -19,7 +19,7 @@ shWiFiConfig::shWiFiConfig(String &adm_name, String &adm_pass)
 
 void shWiFiConfig::setCheckTimer(uint32_t _timer) { checkInterval = _timer; }
 
-#ifndef SWITCH_RELAY_LOG_OFF
+#ifndef WIFI_CONFIG_LOG_OFF
 void shWiFiConfig::setLogOnState(bool log_on, Print *_serial)
 {
   logOnState = log_on;
@@ -140,7 +140,7 @@ void shWiFiConfig::setAdminData(String &name, String &pass)
 
 uint32_t shWiFiConfig::getCheckTimer() { return (checkInterval); }
 
-#ifndef SWITCH_RELAY_LOG_OFF
+#ifndef WIFI_CONFIG_LOG_OFF
 bool shWiFiConfig::getLogOnState() { return (logOnState); }
 #endif
 
