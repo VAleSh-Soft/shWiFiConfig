@@ -128,6 +128,7 @@
       }
       .field input[type="text"],
       .field input[type="password"],
+      .field input[type="number"],
       .field select {
         padding: 7px 9px;
         border: 1px solid var(--border);
@@ -288,7 +289,7 @@
               />
             </div>
             <div class="field">
-              <label for="mask">Маска сети</label
+              <label for="mask">Маска подсети</label
               ><input
                 type="text"
                 minlength="7"
@@ -362,7 +363,7 @@
             />
           </div>
           <div class="field">
-            <label for="ap_mask">Маска сети</label
+            <label for="ap_mask">Маска подсети</label
             ><input
               type="text"
               minlength="7"
@@ -421,6 +422,16 @@
             <span>Использовать индикаторный светодиод</span>
             <input type="checkbox" name="led_on" id="led_on" />
           </label>
+          <label class="field" id="c_intvl_lab">
+            <span>Интервал проверки соединения, секунд</span>
+            <input
+              type="number"
+              name="c_intvl"
+              id="c_intvl"
+              min="0"
+              max="600"
+            />
+          </label>
         </div>
         <div class="save-row">
           <button class="btn" onclick="window.open('/', '_self', false)">
@@ -468,7 +479,12 @@
         if (is_empty && tag.value.length == 0) {
           return true;
         }
-        var res = tag.value.length >= 8 && tag.value.length <= 63;
+        // для пароля в режиме STA минимального ограничения длины нету,т.к.
+        // он от нас не зависит - его задавали где-то в другом месте
+        var res =
+          i_id == "pass"
+            ? tag.value.length <= 63
+            : tag.value.length >= 8 && tag.value.length <= 63;
         if (!res) {
           tag.focus();
           showErrorPage(i_id);
@@ -494,6 +510,8 @@
         }
       }
       function validate_form() {
+        if (document.getElementById("c_intvl").value > 600)
+          document.getElementById("c_intvl").value = 600;
         var res =
           checkSsidValue("ap_ssid", false) &&
           checkPassValue("ap_pass", true) &&
@@ -507,7 +525,9 @@
           res =
             ipAddressCheck("ip") &&
             ipAddressCheck("gateway") &&
-            ipAddressCheck("mask");
+            ipAddressCheck("mask") &&
+            ipAddressCheck("dns1") &&
+            ipAddressCheck("dns2");
         }
         if (res && document.getElementById("use_adm_pass").checked) {
           res =
@@ -521,7 +541,9 @@
           id == "pass" ||
           id == "ip" ||
           id == "gateway" ||
-          id == "mask"
+          id == "mask" ||
+          id == "dns1" ||
+          id == "dns2"
         ) {
           document.getElementById("tab-btn-1").checked = true;
         } else if (
@@ -575,6 +597,7 @@
             a_name: document.getElementById("a_name").value,
             a_pass: document.getElementById("a_pass").value,
             led_on: document.getElementById("led_on").checked,
+            c_intvl: document.getElementById("c_intvl").value,
           };
           var xhr = new XMLHttpRequest();
           xhr.open("POST", "/wifi_setconfig", true);
@@ -687,6 +710,9 @@
             showDiv("use_adm_pass", "adm_pass", false);
             document.getElementById("a_name").setAttribute("value", doc.a_name);
             document.getElementById("a_pass").setAttribute("value", doc.a_pass);
+            document
+              .getElementById("c_intvl")
+              .setAttribute("value", doc.c_intvl);
             if (doc.use_led != 1) {
               document.getElementById("led_on_lab").style.display = "none";
             } else {
@@ -713,6 +739,14 @@
       function setStaIpData() {
         setGateway("gateway", "ip", true);
         setMask("mask");
+        setDns1("dns1");
+      }
+      function setDns1(i_id) {
+        if (document.getElementById(i_id).value.length == 0) {
+          document
+            .getElementById(i_id)
+            .setAttribute("value", document.getElementById("gateway").value);
+        }
       }
       function setMask(i_id) {
         if (document.getElementById(i_id).value.length == 0) {
@@ -793,6 +827,9 @@
         .addEventListener("input", enableBtnSave);
       document
         .getElementById("a_pass")
+        .addEventListener("input", enableBtnSave);
+      document
+        .getElementById("c_intvl")
         .addEventListener("input", enableBtnSave);
       document
         .getElementById("led_on")

@@ -20,6 +20,8 @@
 #define DEFAULT_AP_PASSWORD "12345678"
 #define DEFAULT_ADMIN_NAME "admin"
 #define DEFAULT_ADMIN_PASSWORD "12345678"
+#define DEFAULT_EEPROM_START_INDEX 0
+#define DEFAULT_CHECK_INTERVAL 30000
 
 // ===================================================
 
@@ -39,9 +41,6 @@ typedef ESP8266WebServer shWebServer;
 class shWiFiConfig
 {
 private:
-  uint32_t checkInterval = 30000;
-  uint32_t checkTimer = millis();
-
 public:
   /**
    * @brief конструктор
@@ -58,7 +57,7 @@ public:
   shWiFiConfig(String &adm_name, String &adm_pass);
 
   /**
-   * @brief установка интервала проверки состояния соединения; значение по умолчанию - 30 сек (30000 мсек)
+   * @brief установка интервала проверки состояния соединения; значение по умолчанию - 30 сек (30000 мсек); максимальное значение - 600 сек (600000 мсек)
    *
    * @param _timer новое значение интервала в милисекундах
    */
@@ -160,6 +159,20 @@ public:
   void setStaMask(IPAddress &sta_mask);
 
   /**
+   * @brief установить адрес DNS1 WiFi-сети, к которой подключается модуль
+   *
+   * @param sta_dns1 адрес DNS1
+   */
+  void setStaDns1(IPAddress &sta_dns1);
+
+  /**
+   * @brief установить адрес DNS2 WiFi-сети, к которой подключается модуль
+   *
+   * @param sta_dns2 адрес DNS2
+   */
+  void setStaDns2(IPAddress &sta_dns2);
+
+  /**
    * @brief включить/отключить ручную установку IP-адреса, с которой модуль будет подключаться к заданной WiFi-сети
    *
    * @param static_ip true - включить, false- отключить
@@ -244,7 +257,7 @@ public:
   /**
    * @brief получение текущего интервала проверки состояния соединения
    *
-   * @return uint32_t
+   * @return uint32_t в милисекундах
    */
   uint32_t getCheckTimer();
 
@@ -334,6 +347,20 @@ public:
    * @return IPAddress
    */
   IPAddress getStaMask();
+
+  /**
+   * @brief получение DNS1 сети, заданной для модуля
+   *
+   * @return IPAddress
+   */
+  IPAddress getStaDns1();
+
+  /**
+   * @brief получение DNS2 сети, заданной для модуля
+   *
+   * @return IPAddress
+   */
+  IPAddress getStaDns2();
 
   /**
    * @brief используется или нет статический адрес при подключении модуля к WiF-сети
@@ -479,13 +506,20 @@ public:
   void eepromInit(uint16_t _add_eeprom_size = 0);
 
   /**
+   * @brief установить индекс в EEPROM, с которого будет сохраняться конфигурация модуля
+   *
+   * @param _eeprom_start_index индекс в EEPROM, с которого будет сохраняться конфигурация модуля
+   */
+  void setEepromStartIndex(uint16_t _eeprom_start_index);
+
+  /**
    * @brief обработка событий модуля
    *
    */
   void tick();
 
   /**
-   * @brief загрузка настроек, сохраненных в файле
+   * @brief загрузка настроек, сохраненных в файле или EEPROM
    *
    * @return true
    * @return false
@@ -493,7 +527,7 @@ public:
   bool loadConfig();
 
   /**
-   * @brief сохранение настроек модуля в файл
+   * @brief сохранение настроек модуля в файл или EEPROM
    *
    * @return true
    * @return false
@@ -608,15 +642,9 @@ private:
   bool toUp = false;
   int8_t pin = -1;
   bool use_led = true;
-#if defined(ARDUINO_ARCH_ESP32)
-  int16_t max_pwm = 1023;
+  int16_t max_pwm = 250;
   int16_t min_pwm = 0;
   int16_t pwr_value = max_pwm;
-#else
-  int16_t max_pwm = 280;
-  int16_t min_pwm = 0;
-  int16_t pwr_value = max_pwm;
-#endif
   void writeLed(int16_t _value);
 #if defined(ARDUINO_ARCH_ESP32)
   void setPwmData();

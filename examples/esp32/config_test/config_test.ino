@@ -8,14 +8,14 @@
  *        Для доступа к настройкам введите в адресной строке браузера
  *        http://your_ip/wifi_config , где your_ip - IP-адрес модуля.
  *        Или воспользуйтесь ссылкой "WiFi configuration page" на
- *        главной странице модуля.
- * 
+ *        главной странице примера.
+ *
  *        Кроме того в примере показана возможность защиты паролем администратора
  *        не только страниц WiFi-конфигурации, но и пользовательской страницы,
  *        зарегистрированной с помощью server.on(). Адрес тестовой страницы:
  *        http://your_ip/test , где your_ip - IP-адрес модуля.
  *        Или воспользуйтесь ссылкой "Password-protected page" на
- *        главной странице модуля.
+ *        главной странице примера.
  *
  *        Сохранение параметров возможно как в файловой системе модуля, так и в
  *        EEPROM. Для использования EEPROM раскомментируйте строку
@@ -33,20 +33,20 @@
  *        сохранении параметров.
  *
  * @version 1.3
- * @date 04.10.2026
+ * @date 12.11.2026
  *
- * @copyright Copyright (c) 2024
+ * @copyright Copyright (c) 2024-2026
  *
  */
 
 #include <WebServer.h>
 #include <shWiFiConfig.h>
 
-#define LED_PIN 4
+#define LED_PIN 2
 
-// закомментируйте эту строку, если хотите сохранять настройки в файловой системе модуля
-// иначе они будут сохраняться в EEPROM
-#define SAVE_CONFIG_TO_EEPROM
+// раскомментируйте эту строку, если хотите сохранять настройки в EEPROM,
+// иначе они будут сохраняться в файловой системе модуля
+// #define SAVE_CONFIG_TO_EEPROM
 
 String ssid = "**********"; // имя (SSID) вашей Wi-Fi сети
 String pass = "**********"; // пароль для подключения к вашей Wi-Fi сети
@@ -86,13 +86,16 @@ void setup()
   wifi_config.setAdminData(adm_name, adm_pass);
 
   // ==== отключаем спящий режим WiFi ================
-  // wifi_config.setNoWiFiSleepMode(); // раскомментируйте строку, если вам не нужен спящий режим WiFi
+  wifi_config.setNoWiFiSleepMode();
 
-  // ==== включаем возможность использования комбинированного режима
-  // wifi_config.setUseComboMode(true); // раскомментируйте строку, если хотите использовать комбинированный режим WiFi (AP + STA)
+  // ==== включаем возможность использования комбинированного режима WiFi (AP + STA)
+  wifi_config.setUseComboMode(true); 
 
   // ==== задаем использование светодиода ============
   wifi_config.setUseLed(true, LED_PIN);
+
+  // ==== включаем шифрование паролей ==============
+  wifi_config.setCryptState(true);
 
 #if defined(SAVE_CONFIG_TO_EEPROM)
 
@@ -102,19 +105,14 @@ void setup()
 
 #else
 
-  // инициируем конфигурацию с сохранением в файловой системе
-  wifi_config.begin(&HTTP, &FILESYSTEM, config_page);
   // ==== инициализируем файловую систему ============
   if (FILESYSTEM.begin(true))
+  {
+    // инициируем конфигурацию с сохранением в файловой системе
+    wifi_config.begin(&HTTP, &FILESYSTEM, config_page);
+  }
 
 #endif
-  {
-    // ==== включаем шифрование паролей ==============
-    wifi_config.setCryptState(true);
-
-    // == восстанавливаем сохраненные настройки WiFi =
-    wifi_config.loadConfig();
-  }
 
   // ==== устанавливаем соединение с WiFi ============
   if (!wifi_config.startWiFi())
@@ -124,7 +122,7 @@ void setup()
 
   // ==== настраиваем и запускаем HTTP-сервер ========
 
-  // регистрируем стартовую страницу модуля со ссылками на страницу конфигурации 
+  // регистрируем стартовую страницу модуля со ссылками на страницу конфигурации
   // и тестовую страницу, защищенную паролем
   HTTP.on("/", HTTP_GET, []()
           { HTTP.send(200, "text/html", "<p align='center'  style='font-size: large;'><a href='/wifi_config'>WiFi configuration page</a></p><p align='center'  style='font-size: large;margin-top: 50px;'><a href='/test'>Password-protected page</a></p>"); });

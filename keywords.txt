@@ -27,6 +27,8 @@ setStaPass	KEYWORD2
 setStaIP	KEYWORD2
 setStaGateway	KEYWORD2
 setStaMask	KEYWORD2
+setStaDns1	KEYWORD2
+setStaDns2	KEYWORD2
 setStaticIpMode	KEYWORD2
 setConfigFileName	KEYWORD2
 setApStaMode	KEYWORD2
@@ -51,6 +53,8 @@ getStaPass	KEYWORD2
 getStaIP	KEYWORD2
 getStaGateway	KEYWORD2
 getStaMask	KEYWORD2
+getStaDns1	KEYWORD2
+getStaDns2	KEYWORD2
 getStaticIpMode	KEYWORD2
 getConfigFileName	KEYWORD2
 getApStaMode	KEYWORD2
@@ -65,6 +69,7 @@ setApConfig	KEYWORD2
 setStaConfig	KEYWORD2
 begin	KEYWORD2
 eepromInit	KEYWORD2
+setEepromStartIndex	KEYWORD2
 tick	KEYWORD2
 loadConfig	KEYWORD2
 saveConfig	KEYWORD2
