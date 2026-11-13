@@ -43,8 +43,8 @@ static const char TEXT_JSON[] PROGMEM = "text/json";
 // ==== настройки WiFi ===============================
 
 // ==== AP ======================================
-static String apSsid = DEFAULT_AP_SSID;
-static String apPass = DEFAULT_AP_PASSWORD;
+static String apSsid = WC_DEFAULT_AP_SSID;
+static String apPass = WC_DEFAULT_AP_PASSWORD;
 static IPAddress apIP(192, 168, 4, 1);
 static IPAddress apGateway(192, 168, 4, 1);
 static IPAddress apMask(255, 255, 255, 0);
@@ -62,17 +62,17 @@ static bool ap_sta_mode = false;
 static bool useComboMode = false;
 // ==== Other ===================================
 static bool useAdmPass = false;
-static String admName = DEFAULT_ADMIN_NAME;
-static String admPass = DEFAULT_ADMIN_PASSWORD;
+static String admName = WC_DEFAULT_ADMIN_NAME;
+static String admPass = WC_DEFAULT_ADMIN_PASSWORD;
 static bool useLed = true;
 static bool ledOn = true;
 static int8_t ledPin = -1;
-static uint32_t checkInterval = DEFAULT_CHECK_INTERVAL;
+static uint32_t checkInterval = WC_DEFAULT_CHECK_INTERVAL;
 
 static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
 static String fileName = "/wifi.json";
-static uint8_t eepromStartIndex = DEFAULT_EEPROM_START_INDEX;
+static uint8_t eepromStartIndex = WC_DEFAULT_EEPROM_START_INDEX;
 
 #ifndef WIFI_CONFIG_LOG_OFF
 static Print *serial = NULL;
@@ -155,6 +155,8 @@ static bool check_pass_length(String &_pass);
 
 // ===================================================
 
+static String cached_realm = "";
+
 // проверка права доступа к Web-интерфейсу модуля;
 // доступ открыт, если парольный доступ отключен или имя/пароль администратора не заданы
 static bool check_credentials()
@@ -172,10 +174,15 @@ static bool check_credentials()
 // заголовка WWW-Authenticate. Окно ввода запрашивает только страница настроек,
 // после чего браузер сам подставляет полученные данные в остальные запросы того
 // же realm (используется базовая аутентификация - см. requestAuthentication())
+// При смене пароля realm меняется, и браузер может подставлять старый пароль.
+// Чтобы браузер смог запросить новый пароль, при ошибке аутентификации мы
+// отвечаем 401 с WWW-Authenticate, и браузер показывает окно ввода.
 static void deny_access()
 {
   WFC_PRINTLN(F("Access denied"));
-  http_server->send(403, FPSTR(TEXT_PLAIN), F("Forbidden"));
+  http_server->requestAuthentication(BASIC_AUTH,
+                                     make_auth_realm().c_str(),
+                                     String(FPSTR(AUTH_FAIL_MSG)));
 }
 
 // Уникальное имя защищённой области (realm) базовой HTTP-аутентификации.
@@ -190,6 +197,11 @@ static void deny_access()
 //   получал бы 401 и показывал пустую страницу вместо окна ввода пароля).
 static String make_auth_realm()
 {
+  if (cached_realm != "")
+  {
+    return cached_realm;
+  }
+
   uint32_t hash = 2166136261UL;
 
   String credentials = admName + ":" + admPass;
@@ -205,7 +217,8 @@ static String make_auth_realm()
     mac = mac.substring(mac.length() - 6);
   }
 
-  return String("shWiFiConfig ") + mac + "-" + String(hash, HEX);
+  cached_realm = String("shWiFiConfig ") + mac + "-" + String(hash, HEX);
+  return cached_realm;
 }
 
 static void set_config()
@@ -302,11 +315,12 @@ static void handleWriteSetting()
     badPassword = false;
 
     // определить необходимость перезагрузки модуля
-    bool reconnect = (staSsid != doc[ssid_str].as<String>()) ||
-                     (staPass != doc[pass_str].as<String>());
+    bool reconnect = (!doc[ssid_str].isNull() && staSsid != doc[ssid_str].as<String>()) ||
+                     (!doc[pass_str].isNull() && staPass != doc[pass_str].as<String>());
     if (!reconnect)
     {
-      reconnect = staticIP != (bool)doc[static_ip_str].as<uint8_t>();
+      reconnect = !doc[static_ip_str].isNull() &&
+                  staticIP != (bool)doc[static_ip_str].as<uint8_t>();
       if (!reconnect && staticIP)
       {
         IPAddress ip;
@@ -324,8 +338,8 @@ static void handleWriteSetting()
     }
     if (!reconnect && (curMode == WIFI_AP || curMode == WIFI_AP_STA))
     {
-      reconnect = (apSsid != doc[ap_ssid_str].as<String>()) ||
-                  (apPass != doc[ap_pass_str].as<String>());
+      reconnect = (!doc[ap_ssid_str].isNull() && apSsid != doc[ap_ssid_str].as<String>()) ||
+                  (!doc[ap_pass_str].isNull() && apPass != doc[ap_pass_str].as<String>());
       if (!reconnect)
       {
         IPAddress ip;
@@ -337,7 +351,8 @@ static void handleWriteSetting()
     }
     if (!reconnect)
     {
-      reconnect = ap_sta_mode != (bool)doc[ap_sta_mode_str].as<uint8_t>();
+      reconnect = !doc[ap_sta_mode_str].isNull() &&
+                  ap_sta_mode != (bool)doc[ap_sta_mode_str].as<uint8_t>();
     }
     readJsonSetting(doc);
     save_config();
@@ -373,9 +388,13 @@ static void handleGetApList()
 
   // проверка от дурака - чтобы при плотной сети не превысить
   // размер выделенной под список памяти
-  uint16_t count = 8; // 8 символов - это количество служебных символов в json-строке списка - {"aps":[]}
+  uint16_t count = 10; // 10 символов - это количество служебных символов в json-строке списка - {"aps":[]}
 
+#if defined(ARDUINO_ARCH_ESP8266)
+  StaticJsonDocument<1024> doc;
+#else
   StaticJsonDocument<2048> doc;
+#endif
   if (n > 0)
   {
     for (uint8_t i = 0; i < n; ++i)
@@ -643,9 +662,48 @@ static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
         s = crypt_data.encode(s, i);
       }
 
-      *str_val[i] = s;
+      // контроль длин: запрос может прийти мимо Web-интерфейса, где валидация
+      // не выполняется; невалидное значение отбрасывается, переменная сохраняет
+      // прежнее значение. Иначе, например, пустое или слишком длинное имя точки
+      // доступа приводит к тому, что softAP() не создаёт сеть и доступ к
+      // настройкам теряется. Для staSsid (i == 5) ограничение не ставится -
+      // так же, как в setStaSsid()
+      bool valid = true;
+      switch (i)
+      {
+      case 0:
+        valid = s.length() > 0 && s.length() <= 32;
+        break;
+      case 1:
+        valid = s.length() == 0 || s.length() <= 63;
+        break;
+      case 2:
+        valid = s.length() == 0 || s.length() <= 63;
+        break;
+      case 3:
+        valid = s.length() >= 5 && s.length() <= 16;
+        break;
+      case 4:
+        valid = s.length() >= 8 && s.length() <= 63;
+        break;
+      default:
+        break;
+      }
+
+      if (valid)
+      {
+        *str_val[i] = s;
+      }
+      else
+      {
+        WFC_PRINT(F("Invalid value length: "));
+        WFC_PRINTLN(*_str[i]);
+      }
     }
   }
+
+  // имя и пароль администратора могли измениться - область авторизации нужно пересчитать
+  cached_realm = "";
 
   for (uint8_t i = 6; i < 14; i++)
   {
@@ -933,7 +991,7 @@ void shWiFiConfig::setApSsid(String &ap_ssid)
   }
   else
   {
-    apSsid = DEFAULT_AP_SSID;
+    apSsid = WC_DEFAULT_AP_SSID;
   }
 }
 
@@ -1023,6 +1081,7 @@ void shWiFiConfig::setAdminData(String &name, String &pass)
     admName = name;
     admPass = pass;
     useAdmPass = true;
+    cached_realm = ""; // учётные данные изменились - пересчитать realm
   }
   else
   {
@@ -1220,11 +1279,14 @@ bool shWiFiConfig::isAuthenticated()
     return true;
   }
 
-  // отправляем 401 с заголовком WWW-Authenticate — браузер покажет окно
-  // ввода логина/пароля (базовая HTTP-аутентификация)
-  http_server->requestAuthentication(BASIC_AUTH,
-                                     make_auth_realm().c_str(),
-                                     String(FPSTR(AUTH_FAIL_MSG)));
+  if (http_server != NULL)
+  {
+    // отправляем 401 с заголовком WWW-Authenticate — браузер покажет окно
+    // ввода логина/пароля (базовая HTTP-аутентификация)
+    http_server->requestAuthentication(BASIC_AUTH,
+                                       make_auth_realm().c_str(),
+                                       String(FPSTR(AUTH_FAIL_MSG)));
+  }
   return false;
 }
 

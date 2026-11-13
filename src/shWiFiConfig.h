@@ -16,12 +16,12 @@
 
 // ===================================================
 
-#define DEFAULT_AP_SSID "WIFI_AP_"
-#define DEFAULT_AP_PASSWORD "12345678"
-#define DEFAULT_ADMIN_NAME "admin"
-#define DEFAULT_ADMIN_PASSWORD "12345678"
-#define DEFAULT_EEPROM_START_INDEX 0
-#define DEFAULT_CHECK_INTERVAL 30000
+#define WC_DEFAULT_AP_SSID "WIFI_AP_"
+#define WC_DEFAULT_AP_PASSWORD "12345678"
+#define WC_DEFAULT_ADMIN_NAME "admin"
+#define WC_DEFAULT_ADMIN_PASSWORD "12345678"
+#define WC_DEFAULT_EEPROM_START_INDEX 0
+#define WC_DEFAULT_CHECK_INTERVAL 30000
 
 // ===================================================
 
