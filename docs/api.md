@@ -57,8 +57,6 @@ shWiFiConfig wifi_config(adm_name, adm_pass);
 - `adm_name` - логин для входа в Web-интерфейс
 - `adm_pass` - пароль для входа в Web-интерфейс
 
-***ВАЖНО!!!** конструктор принимает аргументы по ссылке (`String &`), поэтому передавать нужно именованные переменные типа `String`, а не строковые литералы. Вариант `shWiFiConfig wifi_config("admin", "password");` **не скомпилируется**.*
-
 <hr>
 
 ### Инициирование модуля и загрузка параметров
@@ -101,9 +99,9 @@ void loop()
 
 установка данных для подключения к WiFi-сети
 ```
-void setStaSsidData(String &ssid, String &pass);
-void setStaSsid(String &sta_ssid);
-void setStaPass(String &sta_pass);
+void setStaSsidData(const String &ssid, const String &pass);
+void setStaSsid(const String &sta_ssid);
+void setStaPass(const String &sta_pass);
 ```
 здесь
 - `ssid`, `sta_ssid` - имя сети (SSID)
@@ -141,21 +139,21 @@ bool getStaticIpMode();
 
 установить параметры сети для подключения со статическим `IP`
 ```
-// сохраненные в ``EEPROM или файле конфигурации сетевые параметры
+// сохраненные в `EEPROM` или файле конфигурации сетевые параметры
 void setStaConfig();
 
 // задать параметры сети
-void setStaConfig(IPAddress &ip,
-                IPAddress &gateway,
-                IPAddress &mask,
-                IPAddress dns1 = IPAddress(0, 0, 0, 0),
-                IPAddress dns2 = IPAddress(0, 0, 0, 0));
+void setStaConfig(const IPAddress &ip,
+                  const IPAddress &gateway,
+                  const IPAddress &mask,
+                  const IPAddress &dns1 = IPAddress(0, 0, 0, 0),
+                  const IPAddress &dns2 = IPAddress(0, 0, 0, 0));
 
-void setStaIP(IPAddress &sta_ip);
-void setStaGateway(IPAddress &sta_gateway);
-void setStaMask(IPAddress &sta_mask);
-void setStaDns1(IPAddress &sta_dns1);
-void setStaDns2(IPAddress &sta_dns2)
+void setStaIP(const IPAddress &sta_ip);
+void setStaGateway(const IPAddress &sta_gateway);
+void setStaMask(const IPAddress &sta_mask);
+void setStaDns1(const IPAddress &sta_dns1);
+void setStaDns2(const IPAddress &sta_dns2)
 ```
 здесь:
 - `ip`, `sta_ip` - IP-адрес модуля
@@ -183,9 +181,9 @@ IPAddress getStaDns2();
 
 установка данных для подключения к точке доступа
 ```
-void setApSsidData(String &ssid, String &pass);
-void setApSsid(String &ap_ssid);
-void setApPass(String &ap_pass);
+void setApSsidData(const String &ssid, const String &pass);
+void setApSsid(const String &ap_ssid);
+void setApPass(const String &ap_pass);
 ```
 здесь:
 - `ssid`, `ap_ssid` - имя точки доступа
@@ -213,14 +211,16 @@ String getApPass();
 void setApConfig();
 
 // с заданным IP; адрес шлюза будет установлен такой же, маска подсети 255.255.255.0
-void setApConfig(IPAddress &ip);
+void setApConfig(const IPAddress &ip);
 
 // с заданными параметрами
-void setApConfig(IPAddress ip, IPAddress gateway, IPAddress mask);
+void setApConfig(const IPAddress &ip,
+                 const IPAddress &gateway,
+                 const IPAddress &mask);
 
-void setApIP(IPAddress &ap_ip);
-void setApGateway(IPAddress &ap_gateway);
-void setApMask(IPAddress &ap_mask);
+void setApIP(const IPAddress &ap_ip);
+void setApGateway(const IPAddress &ap_gateway);
+void setApMask(const IPAddress &ap_mask);
 ```
 здесь:
 - `ip`, `ap_ip` - IP-адрес точки доступа
@@ -323,7 +323,7 @@ WiFiMode_t getCurMode();
 
 включение/отключение шифрования паролей при сохранении;
 ```
-void setCryptState(bool _state, String _crypt_key = "");
+void setCryptState(bool _state, const String &_crypt_key = "");
 ```
 здесь:
 - `_state` true - включено; false - выключено
@@ -353,7 +353,7 @@ bool getUseAdminPass();
 
 установить логин и пароль для доступа к Web-интерфейсу модуля
 ```
-void setAdminData(String &name, String &pass);
+void setAdminData(const String &name, const String &pass);
 ```
 здесь:
 - `name` - логин
@@ -395,7 +395,7 @@ void stopWiFi();
 
 поиск WiFi-сети
 ```
-bool findAp(String &ssid);
+bool findAp(const String &ssid);
 ```
 здесь:
 - `ssid` - имя искомой сети (SSID)
@@ -426,7 +426,7 @@ void checkStaConnection();
 bool startSTA();
 
 // с заданными параметрами
-bool startSTA(String &ssid, String &pass);
+bool startSTA(const String &ssid, const String &pass);
 ```
 здесь:
 - `ssid` - имя сети (SSID)
@@ -440,7 +440,7 @@ bool startSTA(String &ssid, String &pass);
 bool startSoftAP();
 
 // с заданными параметрами
-bool startSoftAP(String &ssid, String &pass);
+bool startSoftAP(const String &ssid, const String &pass);
 ```
 здесь:
 - `ssid` - имя точки доступа
@@ -505,7 +505,7 @@ void setEepromStartIndex(uint16_t _eeprom_start_index);
 
 установить имя файла для сохранения настроек
 ```
-void setConfigFileName(String &file_name);
+void setConfigFileName(const String &file_name);
 ```
 здесь:
 

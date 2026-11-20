@@ -128,15 +128,13 @@ static bool load_from_file(StaticJsonDocument<CONFIG_SIZE> &doc,
                            DeserializationError &error);
 static bool load_config();
 
-static void set_crypt_state(bool _state, String _crypt_key = "");
-
 static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
                             bool toReWrite = false);
 static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc,
                                bool to_crypt = false);
 
-static bool find_ap(String ssid);
-static void set_cur_mode(WiFiMode_t _mode);
+static bool find_ap(const String &ssid);
+static void set_cur_mode(const WiFiMode_t &_mode);
 static void set_sta_config(const IPAddress &ip,
                            const IPAddress &gateway,
                            const IPAddress &mask,
@@ -147,11 +145,15 @@ static void set_ap_config(const IPAddress &ip,
                           const IPAddress &mask);
 static bool start_wifi();
 static void stop_wifi();
-static bool start_sta(String &ssid, String &pass, bool search_ssid = true);
-static bool start_ap(String &ssid, String &pass, bool combo_mode = false);
+static bool start_sta(const String &ssid,
+                      const String &pass,
+                      bool search_ssid = true);
+static bool start_ap(const String &ssid,
+                     const String &pass,
+                     bool combo_mode = false);
 
-static bool check_ssid_length(String &_ssid);
-static bool check_pass_length(String &_pass);
+static bool check_ssid_length(const String &_ssid);
+static bool check_pass_length(const String &_pass);
 
 // ===================================================
 
@@ -592,28 +594,6 @@ static bool load_config()
   return (result);
 }
 
-static void set_crypt_state(bool _state, String _crypt_key)
-{
-  crypt_data.setCryptState(_state);
-  if (_state)
-  {
-    WFC_PRINTLN(F("Encryption data enabled"));
-
-    if (_crypt_key == "")
-    {
-      WFC_PRINTLN(F("The encryption key has not been specified. The default 64-bit key will be used"));
-    }
-    else if (_crypt_key.length() >= 10)
-    {
-      crypt_data.setCryptKey(_crypt_key);
-    }
-    else
-    {
-      WFC_PRINTLN(F("The encryption key is too short. The default 64-bit key will be used"));
-    }
-  }
-}
-
 static void readJsonSetting(StaticJsonDocument<CONFIG_SIZE> &doc,
                             bool toReWrite)
 {
@@ -751,7 +731,7 @@ static void writeSettingInJson(StaticJsonDocument<CONFIG_SIZE> &doc, bool to_cry
 
 // ===================================================
 
-static bool find_ap(String ssid)
+static bool find_ap(const String &ssid)
 {
   bool result = false;
 
@@ -785,7 +765,7 @@ static bool find_ap(String ssid)
   return (result);
 }
 
-static void set_cur_mode(WiFiMode_t _mode)
+static void set_cur_mode(const WiFiMode_t &_mode)
 {
   curMode = _mode;
   WiFi.mode(_mode);
@@ -797,7 +777,8 @@ static void set_sta_config(const IPAddress &ip,
                            const IPAddress &dns1,
                            const IPAddress &dns2)
 {
-  WiFi.config(ip, gateway, mask, dns1, dns2);
+  IPAddress _dns1 = ((uint32_t)dns1 == (uint32_t)0) ? gateway : dns1;
+  WiFi.config(ip, gateway, mask, _dns1, dns2);
 }
 
 static void set_ap_config(const IPAddress &ip,
@@ -832,7 +813,9 @@ static void stop_wifi()
   set_cur_mode(WIFI_OFF);
 }
 
-static bool start_sta(String &ssid, String &pass, bool search_ssid)
+static bool start_sta(const String &ssid,
+                      const String &pass,
+                      bool search_ssid)
 {
   bool result = false;
 
@@ -898,7 +881,9 @@ static bool start_sta(String &ssid, String &pass, bool search_ssid)
   return (result);
 }
 
-static bool start_ap(String &ssid, String &pass, bool combo_mode)
+static bool start_ap(const String &ssid,
+                     const String &pass,
+                     bool combo_mode)
 {
   bool result = false;
   WFC_PRINT(F("Create WiFi access point "));
@@ -925,7 +910,7 @@ static bool start_ap(String &ssid, String &pass, bool combo_mode)
   return (result);
 }
 
-static bool check_ssid_length(String &_ssid)
+static bool check_ssid_length(const String &_ssid)
 {
   bool result = _ssid != "" && _ssid.length() <= 32;
   if (!result)
@@ -935,7 +920,7 @@ static bool check_ssid_length(String &_ssid)
   return (result);
 }
 
-static bool check_pass_length(String &_pass)
+static bool check_pass_length(const String &_pass)
 {
   bool result = _pass.length() >= 8 && _pass.length() <= 63;
   if (!result)
@@ -952,7 +937,7 @@ shWiFiConfig::shWiFiConfig()
   set_config();
 }
 
-shWiFiConfig::shWiFiConfig(String &adm_name, String &adm_pass)
+shWiFiConfig::shWiFiConfig(const String &adm_name, const String &adm_pass)
 {
   set_config();
   setAdminData(adm_name, adm_pass);
@@ -973,9 +958,26 @@ void shWiFiConfig::setLogOnState(bool log_on, Print *_serial)
 }
 #endif
 
-void shWiFiConfig::setCryptState(bool _state, String _crypt_key)
+void shWiFiConfig::setCryptState(bool _state, const String &_crypt_key)
 {
-  set_crypt_state(_state, _crypt_key);
+  crypt_data.setCryptState(_state);
+  if (_state)
+  {
+    WFC_PRINTLN(F("Encryption data enabled"));
+
+    if (_crypt_key == "")
+    {
+      WFC_PRINTLN(F("The encryption key has not been specified. The default 64-bit key will be used"));
+    }
+    else if (_crypt_key.length() >= 10)
+    {
+      crypt_data.setCryptKey(_crypt_key);
+    }
+    else
+    {
+      WFC_PRINTLN(F("The encryption key is too short. The default 64-bit key will be used"));
+    }
+  }
 }
 
 void shWiFiConfig::setNoWiFiSleepMode(bool _flag)
@@ -983,7 +985,7 @@ void shWiFiConfig::setNoWiFiSleepMode(bool _flag)
   (_flag) ? WiFi.setSleep(WIFI_PS_NONE) : WiFi.setSleep(WIFI_PS_MIN_MODEM);
 }
 
-void shWiFiConfig::setApSsid(String &ap_ssid)
+void shWiFiConfig::setApSsid(const String &ap_ssid)
 {
   if (check_ssid_length(ap_ssid))
   {
@@ -995,7 +997,7 @@ void shWiFiConfig::setApSsid(String &ap_ssid)
   }
 }
 
-void shWiFiConfig::setApPass(String &ap_pass)
+void shWiFiConfig::setApPass(const String &ap_pass)
 {
   if (check_pass_length(ap_pass) || ap_pass.length() == 0)
   {
@@ -1003,35 +1005,29 @@ void shWiFiConfig::setApPass(String &ap_pass)
   }
 }
 
-void shWiFiConfig::setApIP(IPAddress &ap_ip) { apIP = ap_ip; }
+void shWiFiConfig::setApIP(const IPAddress &ap_ip) { apIP = ap_ip; }
 
-void shWiFiConfig::setApGateway(IPAddress &ap_gateway) { apGateway = ap_gateway; };
+void shWiFiConfig::setApGateway(const IPAddress &ap_gateway) { apGateway = ap_gateway; };
 
-void shWiFiConfig::setApMask(IPAddress &ap_mask) { apMask = ap_mask; }
+void shWiFiConfig::setApMask(const IPAddress &ap_mask) { apMask = ap_mask; }
 
-void shWiFiConfig::setStaSsid(String &sta_ssid)
-{
-  staSsid = sta_ssid;
-}
+void shWiFiConfig::setStaSsid(const String &sta_ssid) { staSsid = sta_ssid; }
 
-void shWiFiConfig::setStaPass(String &sta_pass)
-{
-  staPass = sta_pass;
-}
+void shWiFiConfig::setStaPass(const String &sta_pass) { staPass = sta_pass; }
 
-void shWiFiConfig::setStaIP(IPAddress &sta_ip) { staIP = sta_ip; }
+void shWiFiConfig::setStaIP(const IPAddress &sta_ip) { staIP = sta_ip; }
 
-void shWiFiConfig::setStaGateway(IPAddress &sta_gateway) { staGateway = sta_gateway; }
+void shWiFiConfig::setStaGateway(const IPAddress &sta_gateway) { staGateway = sta_gateway; }
 
-void shWiFiConfig::setStaMask(IPAddress &sta_mask) { staMask = sta_mask; }
+void shWiFiConfig::setStaMask(const IPAddress &sta_mask) { staMask = sta_mask; }
 
-void shWiFiConfig::setStaDns1(IPAddress &sta_dns1) { staDns1 = sta_dns1; }
+void shWiFiConfig::setStaDns1(const IPAddress &sta_dns1) { staDns1 = sta_dns1; }
 
-void shWiFiConfig::setStaDns2(IPAddress &sta_dns2) { staDns2 = sta_dns2; }
+void shWiFiConfig::setStaDns2(const IPAddress &sta_dns2) { staDns2 = sta_dns2; }
 
 void shWiFiConfig::setStaticIpMode(bool static_ip) { staticIP = static_ip; }
 
-void shWiFiConfig::setConfigFileName(String &file_name) { fileName = file_name; }
+void shWiFiConfig::setConfigFileName(const String &file_name) { fileName = file_name; }
 
 void shWiFiConfig::setApStaMode(bool mode_on) { ap_sta_mode = mode_on; }
 
@@ -1062,19 +1058,19 @@ void shWiFiConfig::setLedPwmLevels(int16_t _max, int16_t _min)
   led.setLevelsForPWM(_max, _min);
 }
 
-void shWiFiConfig::setStaSsidData(String &ssid, String &pass)
+void shWiFiConfig::setStaSsidData(const String &ssid, const String &pass)
 {
   staSsid = ssid;
   staPass = pass;
 }
 
-void shWiFiConfig::setApSsidData(String &ssid, String &pass)
+void shWiFiConfig::setApSsidData(const String &ssid, const String &pass)
 {
   setApSsid(ssid);
   setApPass(pass);
 }
 
-void shWiFiConfig::setAdminData(String &name, String &pass)
+void shWiFiConfig::setAdminData(const String &name, const String &pass)
 {
   if ((name.length() >= 5 && name.length() <= 16) && check_pass_length(pass))
   {
@@ -1146,12 +1142,14 @@ void shWiFiConfig::setApConfig()
   set_ap_config(apIP, apGateway, apMask);
 }
 
-void shWiFiConfig::setApConfig(IPAddress &ip)
+void shWiFiConfig::setApConfig(const IPAddress &ip)
 {
   set_ap_config(ip, ip, (IPAddress(255, 255, 255, 0)));
 }
 
-void shWiFiConfig::setApConfig(IPAddress ip, IPAddress gateway, IPAddress mask)
+void shWiFiConfig::setApConfig(const IPAddress &ip,
+                               const IPAddress &gateway,
+                               const IPAddress &mask)
 {
   set_ap_config(ip, gateway, mask);
 }
@@ -1161,17 +1159,12 @@ void shWiFiConfig::setStaConfig()
   set_sta_config(staIP, staGateway, staMask, staDns1, staDns2);
 }
 
-void shWiFiConfig::setStaConfig(IPAddress &ip,
-                                IPAddress &gateway,
-                                IPAddress &mask,
-                                IPAddress dns1,
-                                IPAddress dns2)
+void shWiFiConfig::setStaConfig(const IPAddress &ip,
+                                const IPAddress &gateway,
+                                const IPAddress &mask,
+                                const IPAddress &dns1,
+                                const IPAddress &dns2)
 {
-  if ((uint32_t)dns1 == (uint32_t)0)
-  {
-    dns1 = gateway;
-  }
-
   set_sta_config(ip, gateway, mask, dns1, dns2);
 }
 
@@ -1242,7 +1235,7 @@ bool shWiFiConfig::startSoftAP()
   return (start_ap(apSsid, apPass));
 }
 
-bool shWiFiConfig::startSoftAP(String &ssid, String &pass)
+bool shWiFiConfig::startSoftAP(const String &ssid, const String &pass)
 {
   return (start_ap(ssid, pass));
 }
@@ -1252,7 +1245,7 @@ bool shWiFiConfig::startSTA()
   return (start_sta(staSsid, staPass));
 }
 
-bool shWiFiConfig::startSTA(String &ssid, String &pass)
+bool shWiFiConfig::startSTA(const String &ssid, const String &pass)
 {
   return (start_sta(ssid, pass));
 }
@@ -1262,7 +1255,7 @@ bool shWiFiConfig::findSavedAp()
   return (find_ap(staSsid));
 }
 
-bool shWiFiConfig::findAp(String &ssid)
+bool shWiFiConfig::findAp(const String &ssid)
 {
   return (find_ap(ssid));
 }
