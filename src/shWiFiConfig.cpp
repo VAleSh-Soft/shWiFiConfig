@@ -8,25 +8,19 @@
 
 // ===================================================
 
-#ifdef WIFI_CONFIG_LOG_OFF
+#ifdef SH_LOG_OFF
 #define WFC_PRINT(x)
 #define WFC_PRINTLN(x)
 #else
-#define WFC_PRINT(x)          \
-  {                           \
-    if (logOnState && serial) \
-      serial->print(x);       \
-  }
-#define WFC_PRINTLN(x)        \
-  {                           \
-    if (logOnState && serial) \
-      serial->println(x);     \
-  }
+#define WFC_PRINT(x) wfc_serial.wfcPrint(x)
+#define WFC_PRINTLN(x) wfc_serial.wfcPrintln(x)
 #endif
 
 // ===================================================
 
 static LedState led;
+
+static WFC_Serial wfc_serial;
 
 static shWebServer *http_server = NULL;
 
@@ -73,11 +67,6 @@ static bool badPassword = false;
 static WiFiMode_t curMode = WIFI_OFF;
 static String fileName = "/wifi.json";
 static uint8_t eepromStartIndex = WC_DEFAULT_EEPROM_START_INDEX;
-
-#ifndef WIFI_CONFIG_LOG_OFF
-static Print *serial = &Serial;
-static bool logOnState = true;
-#endif
 
 // ==== Имена JSON-параметров ========================
 static const String ap_ssid_str = "ap_ssid";
@@ -946,21 +935,15 @@ void shWiFiConfig::setCheckTimer(uint32_t _timer)
                                               : _timer;
 }
 
-#ifndef WIFI_CONFIG_LOG_OFF
 void shWiFiConfig::setSerialObject(Print *_serial)
 {
-  if (_serial)
-  {
-    serial = _serial;
-  }
-  
+  wfc_serial.setSerial(_serial);
 }
 
 void shWiFiConfig::setLogOnState(bool log_on)
 {
-  logOnState = log_on;
+  wfc_serial.setLogOnOff(log_on);
 }
-#endif
 
 void shWiFiConfig::setCryptState(bool _state, const String &_crypt_key)
 {
@@ -1091,9 +1074,7 @@ void shWiFiConfig::setAdminData(const String &name, const String &pass)
 
 uint32_t shWiFiConfig::getCheckTimer() { return (checkInterval); }
 
-#ifndef WIFI_CONFIG_LOG_OFF
-bool shWiFiConfig::getLogOnState() { return (logOnState); }
-#endif
+bool shWiFiConfig::getLogOnState() { return (wfc_serial.getLogOnOff()); }
 
 WiFiMode_t shWiFiConfig::getCurMode() { return (curMode); }
 
@@ -1482,3 +1463,7 @@ void LedState::setLevelsForPWM(int16_t _max, int16_t _min)
   max_pwm = (_max < 1024) ? ((_max >= 0) ? _max : 0) : 1023;
   min_pwm = (_min < 1024) ? ((_min >= 0) ? _min : 0) : 1023;
 }
+
+// ==== WFC_Serial class =============================
+
+bool WFC_Serial::isEnabled() const { return (serial && logOn); }

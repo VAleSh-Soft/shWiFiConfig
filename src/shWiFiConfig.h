@@ -31,12 +31,6 @@ typedef WebServer shWebServer;
 typedef ESP8266WebServer shWebServer;
 #endif
 
-// =====================================================
-
-#ifdef SH_LOG_OFF
-#define WIFI_CONFIG_LOG_OFF
-#endif
-
 // ==== shWiFiConfig class ===========================
 class shWiFiConfig
 {
@@ -669,3 +663,85 @@ public:
   void setUseLed(bool _use);
   void setLevelsForPWM(int16_t _max, int16_t _min);
 };
+
+// ==== WFC_Serial class =============================
+
+class WFC_Serial
+{
+private:
+#ifdef SH_LOG_OFF
+  Print *serial = nullptr;
+  bool logOn = false;
+#else
+  Print *serial = &Serial;
+  bool logOn = true;
+#endif
+public:
+  WFC_Serial() = default;
+  void setSerial(Print *_serial);
+  void setLogOnOff(bool _logOn);
+  bool getLogOnOff() const;
+  bool isEnabled() const;
+  template <typename T>
+  void wfcPrint(const T &x);
+  template <typename T>
+  void wfcPrintln(const T &x);
+};
+
+inline void WFC_Serial::setSerial(Print *_serial)
+{
+#ifdef SH_LOG_OFF
+  (void)(_serial);
+#else
+  if (_serial)
+  {
+    serial = _serial;
+  }
+#endif
+}
+
+inline void WFC_Serial::setLogOnOff(bool _logOn)
+{
+#ifdef SH_LOG_OFF
+  (void)(_logOn);
+#else
+  logOn = _logOn;
+#endif
+}
+
+inline bool WFC_Serial::getLogOnOff() const
+{
+#ifdef SH_LOG_OFF
+  return false;
+#else
+  return logOn;
+#endif
+}
+
+template <typename T>
+inline void WFC_Serial::wfcPrint(const T &x)
+{
+#ifdef SH_LOG_OFF
+  (void)(x);
+#else
+  if (isEnabled())
+  {
+    serial->print(x);
+  }
+#endif
+}
+
+template <typename T>
+inline void WFC_Serial::wfcPrintln(const T &x)
+{
+#ifdef SH_LOG_OFF
+  (void)(x);
+#else
+  if (isEnabled())
+  {
+    serial->println(x);
+  }
+#endif
+}
+
+// ===================================================
