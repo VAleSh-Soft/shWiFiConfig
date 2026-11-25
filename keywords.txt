@@ -15,6 +15,7 @@ LedState	KEYWORD1
 
 setCheckTimer	KEYWORD2
 setLogOnState	KEYWORD2
+setSerialObject	KEYWORD2
 setCryptState	KEYWORD2
 setNoWiFiSleepMode	KEYWORD2
 setApSsid	KEYWORD2

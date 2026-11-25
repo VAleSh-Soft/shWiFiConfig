@@ -65,12 +65,18 @@ public:
 
 #ifndef WIFI_CONFIG_LOG_OFF
   /**
+   * @brief установка интерфейса для вывода отладочных сообщений
+   *
+   * @param _serial указатель на интерфейс
+   */
+  void setSerialObject(Print *_serial);
+
+  /**
    * @brief включение/отключение выдачи сообщений о работе модуля через Serial
    *
    * @param log_on true - включено; false - выключено
-   * @param _serial интерфейс для вывода сообщений
    */
-  void setLogOnState(bool log_on, Print *_serial = &Serial);
+  void setLogOnState(bool log_on);
 #endif
 
   /**

@@ -75,7 +75,7 @@ static String fileName = "/wifi.json";
 static uint8_t eepromStartIndex = WC_DEFAULT_EEPROM_START_INDEX;
 
 #ifndef WIFI_CONFIG_LOG_OFF
-static Print *serial = NULL;
+static Print *serial = &Serial;
 static bool logOnState = true;
 #endif
 
@@ -226,10 +226,6 @@ static String make_auth_realm()
 static void set_config()
 {
   WiFi.mode(curMode);
-
-#ifndef WIFI_CONFIG_LOG_OFF
-  serial = &Serial;
-#endif
 }
 
 static void _begin(shWebServer *_server, const String &_config_page)
@@ -951,10 +947,18 @@ void shWiFiConfig::setCheckTimer(uint32_t _timer)
 }
 
 #ifndef WIFI_CONFIG_LOG_OFF
-void shWiFiConfig::setLogOnState(bool log_on, Print *_serial)
+void shWiFiConfig::setSerialObject(Print *_serial)
+{
+  if (_serial)
+  {
+    serial = _serial;
+  }
+  
+}
+
+void shWiFiConfig::setLogOnState(bool log_on)
 {
   logOnState = log_on;
-  serial = (logOnState) ? _serial : NULL;
 }
 #endif
 
